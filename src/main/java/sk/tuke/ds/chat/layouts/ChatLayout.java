@@ -20,6 +20,8 @@ public class ChatLayout {
     private JPanel contentPanel;
     private JTextPane messagesTextPane;
     private JList usersList;
+    private JTextArea textArea1;
+    private JButton sendButton;
 
     public ChatLayout() {
         connectButton.addActionListener(new ActionListener() {
