@@ -4,10 +4,12 @@
     <constraints>
       <xy x="20" y="20" width="584" height="416"/>
     </constraints>
-    <properties/>
+    <properties>
+      <preferredSize width="700" height="500"/>
+    </properties>
     <border type="none"/>
     <children>
-      <tabbedpane id="e45cb" binding="tabbedPane1" default-binding="true">
+      <tabbedpane id="e45cb" binding="tabbedPane">
         <constraints>
           <grid row="0" column="0" row-span="1" col-span="1" vsize-policy="3" hsize-policy="3" anchor="0" fill="3" indent="0" use-parent-layout="false">
             <minimum-size width="580" height="320"/>
@@ -111,7 +113,7 @@
               </component>
             </children>
           </grid>
-          <grid id="e5e9" layout-manager="GridBagLayout">
+          <grid id="e5e9" binding="templateTab" layout-manager="GridBagLayout">
             <constraints>
               <tabbedpane title="Template"/>
             </constraints>
@@ -121,7 +123,7 @@
             </properties>
             <border type="none"/>
             <children>
-              <grid id="627bc" layout-manager="GridBagLayout">
+              <grid id="627bc" binding="userSettingsPanel" layout-manager="GridBagLayout">
                 <constraints>
                   <grid row="0" column="0" row-span="1" col-span="1" vsize-policy="3" hsize-policy="3" anchor="0" fill="3" indent="0" use-parent-layout="false"/>
                   <gridbag weightx="10.0" weighty="0.0"/>
@@ -144,11 +146,12 @@
                   <component id="45997" class="javax.swing.JTextField" binding="usernameTextField">
                     <constraints>
                       <grid row="0" column="1" row-span="1" col-span="1" vsize-policy="3" hsize-policy="3" anchor="0" fill="1" indent="0" use-parent-layout="false"/>
-                      <gridbag weightx="1.0" weighty="1.0"/>
+                      <gridbag top="0" left="7" bottom="0" right="7" weightx="1.0" weighty="1.0"/>
                     </constraints>
                     <properties>
                       <editable value="true"/>
                       <horizontalAlignment value="11"/>
+                      <margin top="0" left="0" bottom="0" right="0"/>
                       <preferredSize width="100" height="24"/>
                       <text value="guest"/>
                     </properties>
@@ -213,7 +216,7 @@
                     </constraints>
                     <properties/>
                   </component>
-                  <component id="569cd" class="javax.swing.JTextArea" binding="textArea1" default-binding="true">
+                  <component id="569cd" class="javax.swing.JTextArea" binding="messageTextArea">
                     <constraints>
                       <grid row="2" column="0" row-span="1" col-span="1" vsize-policy="6" hsize-policy="6" anchor="0" fill="3" indent="0" use-parent-layout="false">
                         <preferred-size width="150" height="50"/>
@@ -237,7 +240,7 @@
           </grid>
         </children>
       </tabbedpane>
-      <grid id="da4e8" layout-manager="GridBagLayout">
+      <grid id="da4e8" binding="statusPanel" layout-manager="GridBagLayout">
         <constraints>
           <grid row="1" column="0" row-span="1" col-span="1" vsize-policy="1" hsize-policy="3" anchor="0" fill="3" indent="0" use-parent-layout="false"/>
           <gridbag weightx="1.0" weighty="0.0"/>
