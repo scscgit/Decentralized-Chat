@@ -35,6 +35,7 @@
                   <gridbag weightx="1.0" weighty="0.0"/>
                 </constraints>
                 <properties>
+                  <preferredSize width="100" height="24"/>
                   <text value="127.0.0.1"/>
                 </properties>
               </component>
@@ -46,6 +47,7 @@
                   <gridbag weightx="1.0" weighty="0.0"/>
                 </constraints>
                 <properties>
+                  <preferredSize width="100" height="24"/>
                   <text value="21315"/>
                 </properties>
               </component>
@@ -103,59 +105,103 @@
                   <gridbag weightx="1.0" weighty="0.0"/>
                 </constraints>
                 <properties>
+                  <preferredSize width="100" height="24"/>
                   <text value="21315"/>
                 </properties>
               </component>
             </children>
           </grid>
-          <grid id="e5e9" layout-manager="GridBagLayout">
+          <grid id="e5e9" layout-manager="FlowLayout" hgap="5" vgap="5" flow-align="1">
             <constraints>
               <tabbedpane title="Template"/>
             </constraints>
             <properties>
               <enabled value="true"/>
+              <focusable value="true"/>
             </properties>
             <border type="none"/>
             <children>
-              <component id="45997" class="javax.swing.JTextField" binding="guestTextField" default-binding="true">
-                <constraints>
-                  <grid row="0" column="1" row-span="1" col-span="1" vsize-policy="3" hsize-policy="3" anchor="0" fill="1" indent="0" use-parent-layout="false"/>
-                  <gridbag weightx="1.0" weighty="1.0"/>
-                </constraints>
+              <grid id="627bc" layout-manager="GridBagLayout">
+                <constraints/>
                 <properties>
-                  <editable value="true"/>
-                  <horizontalAlignment value="11"/>
-                  <text value="guest"/>
+                  <preferredSize width="500" height="34"/>
                 </properties>
-              </component>
-              <component id="e8767" class="javax.swing.JButton" binding="renameUserButton" default-binding="true">
-                <constraints>
-                  <grid row="0" column="2" row-span="1" col-span="1" vsize-policy="3" hsize-policy="3" anchor="0" fill="1" indent="0" use-parent-layout="false"/>
-                  <gridbag weightx="1.0" weighty="1.0"/>
-                </constraints>
+                <border type="none"/>
+                <children>
+                  <component id="899e8" class="javax.swing.JLabel">
+                    <constraints>
+                      <grid row="0" column="0" row-span="1" col-span="1" vsize-policy="0" hsize-policy="0" anchor="8" fill="0" indent="0" use-parent-layout="false"/>
+                      <gridbag weightx="0.0" weighty="1.0"/>
+                    </constraints>
+                    <properties>
+                      <requestFocusEnabled value="true"/>
+                      <text value="User name:"/>
+                    </properties>
+                  </component>
+                  <component id="45997" class="javax.swing.JTextField" binding="usernameTextField">
+                    <constraints>
+                      <grid row="0" column="1" row-span="1" col-span="1" vsize-policy="3" hsize-policy="3" anchor="0" fill="1" indent="0" use-parent-layout="false"/>
+                      <gridbag weightx="1.0" weighty="1.0"/>
+                    </constraints>
+                    <properties>
+                      <editable value="true"/>
+                      <horizontalAlignment value="11"/>
+                      <preferredSize width="100" height="24"/>
+                      <text value="guest"/>
+                    </properties>
+                  </component>
+                  <component id="e8767" class="javax.swing.JButton" binding="renameUserButton" default-binding="true">
+                    <constraints>
+                      <grid row="0" column="2" row-span="1" col-span="1" vsize-policy="3" hsize-policy="3" anchor="0" fill="1" indent="0" use-parent-layout="false"/>
+                      <gridbag weightx="1.0" weighty="1.0"/>
+                    </constraints>
+                    <properties>
+                      <preferredSize width="40" height="24"/>
+                      <text value="Rename user"/>
+                    </properties>
+                  </component>
+                  <component id="98ea1" class="javax.swing.JButton" binding="disconnectButton" default-binding="true">
+                    <constraints>
+                      <grid row="0" column="3" row-span="1" col-span="1" vsize-policy="3" hsize-policy="3" anchor="0" fill="1" indent="0" use-parent-layout="false"/>
+                      <gridbag weightx="1.0" weighty="1.0"/>
+                    </constraints>
+                    <properties>
+                      <preferredSize width="40" height="24"/>
+                      <text value="Disconnect"/>
+                    </properties>
+                  </component>
+                </children>
+              </grid>
+              <grid id="63b31" binding="contentPanel" layout-manager="GridBagLayout">
+                <constraints/>
                 <properties>
-                  <text value="Rename user"/>
+                  <preferredSize width="500" height="54"/>
                 </properties>
-              </component>
-              <component id="98ea1" class="javax.swing.JButton" binding="disconnectButton" default-binding="true">
-                <constraints>
-                  <grid row="0" column="3" row-span="1" col-span="1" vsize-policy="3" hsize-policy="3" anchor="0" fill="1" indent="0" use-parent-layout="false"/>
-                  <gridbag weightx="1.0" weighty="1.0"/>
-                </constraints>
-                <properties>
-                  <text value="Disconnect"/>
-                </properties>
-              </component>
-              <component id="899e8" class="javax.swing.JLabel">
-                <constraints>
-                  <grid row="0" column="0" row-span="1" col-span="1" vsize-policy="0" hsize-policy="0" anchor="8" fill="0" indent="0" use-parent-layout="false"/>
-                  <gridbag weightx="0.0" weighty="1.0"/>
-                </constraints>
-                <properties>
-                  <requestFocusEnabled value="true"/>
-                  <text value="User name:"/>
-                </properties>
-              </component>
+                <border type="none"/>
+                <children>
+                  <component id="79f2d" class="javax.swing.JList" binding="usersList">
+                    <constraints>
+                      <grid row="0" column="1" row-span="1" col-span="1" vsize-policy="6" hsize-policy="2" anchor="0" fill="3" indent="0" use-parent-layout="false">
+                        <preferred-size width="150" height="50"/>
+                      </grid>
+                      <gridbag weightx="0.0" weighty="0.0"/>
+                    </constraints>
+                    <properties/>
+                  </component>
+                  <component id="93616" class="javax.swing.JTextPane" binding="messagesTextPane">
+                    <constraints>
+                      <grid row="0" column="0" row-span="1" col-span="1" vsize-policy="6" hsize-policy="6" anchor="0" fill="3" indent="0" use-parent-layout="false">
+                        <preferred-size width="150" height="50"/>
+                      </grid>
+                      <gridbag weightx="0.0" weighty="0.0"/>
+                    </constraints>
+                    <properties>
+                      <background color="-1"/>
+                      <text value="Message1&#10;Message2&#10;Message3"/>
+                    </properties>
+                  </component>
+                </children>
+              </grid>
             </children>
           </grid>
         </children>

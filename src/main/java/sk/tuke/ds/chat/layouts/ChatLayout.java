@@ -15,8 +15,11 @@ public class ChatLayout {
     private JButton hostButton;
     private JTextField hostPortTextField;
     private JButton disconnectButton;
-    private JTextField guestTextField;
+    private JTextField usernameTextField;
     private JButton renameUserButton;
+    private JPanel contentPanel;
+    private JTextPane messagesTextPane;
+    private JList usersList;
 
     public ChatLayout() {
         connectButton.addActionListener(new ActionListener() {
