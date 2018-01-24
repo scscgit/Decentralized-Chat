@@ -1,8 +1,10 @@
 package sk.tuke.ds.chat.layouts;
 
+import sk.tuke.ds.chat.rmi.ChatNodeServer;
 import sk.tuke.ds.chat.util.Util;
 
 import javax.swing.*;
+import java.rmi.RemoteException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.HashMap;
@@ -15,6 +17,7 @@ public class ChatTab {
 
     private JPanel tabPanel;
     private String username;
+    private ChatNodeServer server;
 
     private ChatTab(JPanel tabPanel) {
         if (tabPanel == null) {
@@ -43,7 +46,20 @@ public class ChatTab {
         setUsername("guest" + (new Random().nextInt(900) + 100));
     }
 
+    public ChatNodeServer getServer() {
+        return server;
+    }
+
+    public void setServer(ChatNodeServer server) {
+        this.server = server;
+    }
+
     public void onDisconnect() {
+        try {
+            this.server.stop();
+        } catch (RemoteException e) {
+            e.printStackTrace();
+        }
     }
 
     public void addMessage(String username, String[] messages, Date date) {

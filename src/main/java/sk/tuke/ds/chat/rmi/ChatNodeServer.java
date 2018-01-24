@@ -17,20 +17,24 @@ public class ChatNodeServer extends AbstractServer implements ChatNodeConnector 
     /**
      * Creates RMI registry on specified port, exports the current server object and binds it to the registry.
      *
-     * @param port specified port
+     * @param port        specified port
+     * @param nodeContext the initial context to start the server with, specifically existing peers to try
      * @throws RemoteException
      */
-    public ChatNodeServer(int port) throws RemoteException, UnknownHostException {
+    public ChatNodeServer(int port, NodeContext nodeContext) throws RemoteException, UnknownHostException {
         super(ChatNodeConnector.SERVICE_NAME, port);
         this.nodeId = new NodeId(port);
         this.heartbeater = new HeartbeatImpl(this, port);
-        this.nodeContext = new NodeContext();
+        this.nodeContext = nodeContext;
     }
 
     @Override
     public void stop() throws RemoteException {
-        super.stop();
-        this.heartbeater.stop();
+        try {
+            super.stop();
+        } finally {
+            this.heartbeater.stop();
+        }
     }
 
     public NodeId getNodeId() {

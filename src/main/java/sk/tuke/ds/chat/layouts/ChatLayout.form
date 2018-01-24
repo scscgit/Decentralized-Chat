@@ -29,7 +29,7 @@
             <properties/>
             <border type="none"/>
             <children>
-              <component id="b0be9" class="javax.swing.JTextField" binding="nodeIpTextField">
+              <component id="b0be9" class="javax.swing.JTextField" binding="peerNodeIpTextField">
                 <constraints>
                   <grid row="1" column="0" row-span="1" col-span="1" vsize-policy="0" hsize-policy="6" anchor="0" fill="0" indent="0" use-parent-layout="false">
                     <preferred-size width="150" height="-1"/>
@@ -41,7 +41,7 @@
                   <text value="127.0.0.1"/>
                 </properties>
               </component>
-              <component id="25091" class="javax.swing.JTextField" binding="nodePortTextField">
+              <component id="25091" class="javax.swing.JTextField" binding="peerNodePortTextField">
                 <constraints>
                   <grid row="3" column="0" row-span="1" col-span="1" vsize-policy="0" hsize-policy="6" anchor="0" fill="0" indent="0" use-parent-layout="false">
                     <preferred-size width="150" height="-1"/>
@@ -59,7 +59,7 @@
                   <gridbag weightx="1.0" weighty="0.0"/>
                 </constraints>
                 <properties>
-                  <text value="Node IP address"/>
+                  <text value="Hostname (IP address) of existing peer node"/>
                 </properties>
               </component>
               <component id="3c1b9" class="javax.swing.JLabel">
@@ -68,7 +68,7 @@
                   <gridbag weightx="1.0" weighty="0.0"/>
                 </constraints>
                 <properties>
-                  <text value="Node port"/>
+                  <text value="Port of existing peer node"/>
                 </properties>
               </component>
               <component id="9868e" class="javax.swing.JButton" binding="hostButton" default-binding="true">
@@ -77,8 +77,8 @@
                   <gridbag weightx="1.0" weighty="0.0"/>
                 </constraints>
                 <properties>
-                  <label value="Host new server"/>
-                  <text value="Host new server"/>
+                  <label value="Host a new P2P chat server"/>
+                  <text value="Host a new P2P chat server"/>
                 </properties>
               </component>
               <component id="a11cd" class="javax.swing.JButton" binding="connectButton" default-binding="true">
@@ -87,7 +87,7 @@
                   <gridbag weightx="1.0" weighty="0.0"/>
                 </constraints>
                 <properties>
-                  <text value="Connect"/>
+                  <text value="Connect to a peer"/>
                 </properties>
               </component>
               <component id="d751d" class="javax.swing.JLabel">
@@ -96,10 +96,10 @@
                   <gridbag weightx="1.0" weighty="0.0"/>
                 </constraints>
                 <properties>
-                  <text value="Port to host new server on"/>
+                  <text value="Client port (to become a peer on)"/>
                 </properties>
               </component>
-              <component id="22fef" class="javax.swing.JTextField" binding="hostPortTextField">
+              <component id="22fef" class="javax.swing.JTextField" binding="clientHostPortTextField">
                 <constraints>
                   <grid row="7" column="0" row-span="1" col-span="1" vsize-policy="0" hsize-policy="6" anchor="0" fill="0" indent="0" use-parent-layout="false">
                     <preferred-size width="150" height="-1"/>

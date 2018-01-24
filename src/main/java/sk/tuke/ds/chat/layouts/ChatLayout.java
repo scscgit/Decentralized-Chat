@@ -1,21 +1,30 @@
 package sk.tuke.ds.chat.layouts;
 
 import javafx.scene.input.KeyCode;
+import sk.tuke.ds.chat.node.NodeContext;
+import sk.tuke.ds.chat.node.NodeId;
+import sk.tuke.ds.chat.rmi.ChatNodeServer;
+import sk.tuke.ds.chat.util.Log;
 import sk.tuke.ds.chat.util.Util;
 
 import javax.swing.*;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
+import java.net.UnknownHostException;
+import java.rmi.RemoteException;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
+import java.util.List;
 
 public class ChatLayout {
     private JTabbedPane tabbedPane;
     private JPanel mainPanel;
-    private JTextField nodeIpTextField;
-    private JTextField nodePortTextField;
+    private JTextField peerNodeIpTextField;
+    private JTextField peerNodePortTextField;
     private JButton connectButton;
     private JButton hostButton;
-    private JTextField hostPortTextField;
+    private JTextField clientHostPortTextField;
     private JButton disconnectButton;
     private JTextField usernameTextField;
     private JButton renameUserButton;
@@ -33,20 +42,42 @@ public class ChatLayout {
         this.messageTextArea.setName("messageTextArea");
         this.messagesTextPane.setName("messagesTextPane");
         this.usernameTextField.setName("usernameTextField");
+        this.renameUserButton.setName("renameUserButton");
+        this.disconnectButton.setName("disconnectButton");
 
         // Configuration listeners
-        this.connectButton.addActionListener(e -> {
+        this.connectButton.addActionListener(actionEvent -> {
             // Connect to IP
-            JPanel tabPanel = generateListeners(Util.copySerializable(this.templateTab));
-            this.tabbedPane.addTab(
-                    this.nodeIpTextField.getText() + ":" + this.nodePortTextField.getText(),
-                    tabPanel
-            );
-            this.tabbedPane.setSelectedComponent(tabPanel);
-            ChatTab.lookup(tabPanel).generateUsername();
+            try {
+                createTab(new ChatNodeServer(
+                        Integer.parseInt(this.peerNodePortTextField.getText()),
+                        new NodeContext(
+                                Arrays.asList(new NodeId(
+                                        Integer.parseInt(this.peerNodePortTextField.getText()),
+                                        this.peerNodeIpTextField.getText()
+                                ).getNodeIdString()),
+                                new ArrayList<>()
+                        )
+                ));
+            } catch (RemoteException | UnknownHostException e) {
+                e.printStackTrace();
+                throw new RuntimeException("Could not create server", e);
+            }
         });
-        this.hostButton.addActionListener(e -> {
+        this.hostButton.addActionListener(actionEvent -> {
             // Host new server
+            try {
+                createTab(new ChatNodeServer(
+                        Integer.parseInt(this.peerNodePortTextField.getText()),
+                        new NodeContext(
+                                new ArrayList<>(),
+                                new ArrayList<>()
+                        )
+                ));
+            } catch (RemoteException | UnknownHostException e) {
+                e.printStackTrace();
+                throw new RuntimeException("Could not create server", e);
+            }
         });
 
         // Example template tab is also used to test the listener generation on (Optional for testing)
@@ -56,14 +87,63 @@ public class ChatLayout {
         this.tabbedPane.remove(this.templateTab);
     }
 
+    private JPanel createTab(ChatNodeServer chatNodeServer) {
+        JPanel tabPanel = generateListeners(Util.copySerializable(this.templateTab));
+        ChatTab chatTab = ChatTab.lookup(tabPanel);
+        chatTab.setServer(chatNodeServer);
+        this.tabbedPane.addTab(
+                generateTabTitle(chatTab, "?"),
+                tabPanel
+        );
+        this.tabbedPane.setSelectedComponent(tabPanel);
+        chatTab.generateUsername();
+
+        // Transferring focus to message text area
+        //Util.findComponentIn(tabPanel, "messageTextArea").requestFocusInWindow();
+        Util.findComponentIn(tabPanel, "usernameTextField").setEnabled(false);
+        Util.findComponentIn(tabPanel, "usernameTextField").setEnabled(true);
+
+        updateTabTitle(chatTab);
+        return tabPanel;
+    }
+
+    private void updateTabTitle(ChatTab chatTab) {
+        // Update assuming it's current tab
+        this.tabbedPane.setTitleAt(
+                this.tabbedPane.getSelectedIndex(),
+                generateTabTitle(chatTab, chatTab.getUsername())
+        );
+    }
+
+    private String generateTabTitle(ChatTab chatTab, String username) {
+        // Get first peer node id
+        List<String> peers = chatTab.getServer().getContext().getPeers();
+        String peerNodeIdString = peers.size() > 0 ? chatTab.getServer().getContext().getPeers().get(0) : null;
+        NodeId peerNodeId = new NodeId(peerNodeIdString);
+        // Get this node id too
+        NodeId thisServerNodeId = chatTab.getServer().getNodeId();
+        return username
+                + "@"
+                + (peerNodeIdString == null ? "localhost" : peerNodeId.getHostAddress())
+                + ":"
+                + (peerNodeIdString == null ? thisServerNodeId.getPort() : peerNodeId.getPort());
+    }
+
     private <T extends JPanel> T generateListeners(T tabPanel) {
         // Tab configuration
-        this.renameUserButton.addActionListener(e -> {
-            ChatTab.lookup(tabPanel).setUsername(
-                    Util.<JTextField>findComponentIn(tabPanel, "usernameTextField").getText()
-            );
+        Util.<JButton>findComponentIn(tabPanel, "renameUserButton").addActionListener(e -> {
+            Log.d(this, "Renaming user");
+            String username = Util.<JTextField>findComponentIn(tabPanel, "usernameTextField").getText();
+            if ("".equals(username.trim())) {
+                Log.e(this, "No username provided");
+                return;
+            }
+            ChatTab chatTab = ChatTab.lookup(tabPanel);
+            chatTab.setUsername(username);
+            updateTabTitle(chatTab);
         });
-        this.disconnectButton.addActionListener(e -> {
+        Util.<JButton>findComponentIn(tabPanel, "disconnectButton").addActionListener(e -> {
+            Log.d(this, "Disconnected user");
             this.tabbedPane.remove(tabPanel);
             ChatTab.lookup(tabPanel).onDisconnect();
         });
@@ -97,7 +177,7 @@ public class ChatLayout {
     }
 
     public static void main(String[] args) {
-        JFrame frame = new JFrame("Decentralized Chat by Steve (ɔ)");
+        JFrame frame = new JFrame("Decentralized Chat by Steve (ɔ) 2018 to infinity");
         frame.setContentPane(new ChatLayout().mainPanel);
         frame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
         frame.pack();
