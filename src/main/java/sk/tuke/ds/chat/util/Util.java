@@ -1,7 +1,13 @@
 package sk.tuke.ds.chat.util;
 
+import sk.tuke.ds.chat.node.NodeId;
+
 import java.awt.*;
 import java.io.*;
+import java.rmi.NotBoundException;
+import java.rmi.Remote;
+import java.rmi.RemoteException;
+import java.rmi.registry.LocateRegistry;
 
 public class Util {
 
@@ -48,5 +54,19 @@ public class Util {
             }
         }
         return null;
+    }
+
+    @SuppressWarnings("unchecked")
+    public static <T extends Remote> T rmiLookup(NodeId nodeId, String serviceName) {
+        try {
+            return (T) LocateRegistry.getRegistry(
+                    nodeId.getHostAddress(),
+                    nodeId.getPort()
+            ).lookup(serviceName);
+        } catch (RemoteException | NotBoundException | ClassCastException e) {
+            e.printStackTrace();
+            Log.e(Util.class, e);
+            return null;
+        }
     }
 }

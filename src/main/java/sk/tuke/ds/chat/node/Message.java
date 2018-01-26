@@ -1,8 +1,11 @@
 package sk.tuke.ds.chat.node;
 
+import org.apache.commons.codec.digest.DigestUtils;
+
+import java.io.Serializable;
 import java.util.Date;
 
-public class Message {
+public class Message implements Serializable {
 
     private Date date;
     private String user;
@@ -24,5 +27,9 @@ public class Message {
 
     public String getMessage() {
         return message;
+    }
+
+    public String shaHash() {
+        return DigestUtils.sha256Hex(date.toString() + "\n" + user + "\n" + message);
     }
 }

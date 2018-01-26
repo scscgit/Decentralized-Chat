@@ -1,6 +1,7 @@
 package sk.tuke.ds.chat.layouts;
 
 import javafx.scene.input.KeyCode;
+import sk.tuke.ds.chat.node.Message;
 import sk.tuke.ds.chat.node.NodeContext;
 import sk.tuke.ds.chat.node.NodeId;
 import sk.tuke.ds.chat.rmi.ChatNodeServer;
@@ -50,7 +51,7 @@ public class ChatLayout {
             // Connect to IP
             try {
                 createTab(new ChatNodeServer(
-                        Integer.parseInt(this.peerNodePortTextField.getText()),
+                        Integer.parseInt(this.clientHostPortTextField.getText()),
                         new NodeContext(
                                 Arrays.asList(new NodeId(
                                         Integer.parseInt(this.peerNodePortTextField.getText()),
@@ -68,7 +69,7 @@ public class ChatLayout {
             // Host new server
             try {
                 createTab(new ChatNodeServer(
-                        Integer.parseInt(this.peerNodePortTextField.getText()),
+                        Integer.parseInt(this.clientHostPortTextField.getText()),
                         new NodeContext(
                                 new ArrayList<>(),
                                 new ArrayList<>()
@@ -100,8 +101,8 @@ public class ChatLayout {
 
         // Transferring focus to message text area
         //Util.findComponentIn(tabPanel, "messageTextArea").requestFocusInWindow();
-        Util.findComponentIn(tabPanel, "usernameTextField").setEnabled(false);
-        Util.findComponentIn(tabPanel, "usernameTextField").setEnabled(true);
+        //Util.findComponentIn(tabPanel, "usernameTextField").setEnabled(false);
+        //Util.findComponentIn(tabPanel, "usernameTextField").setEnabled(true);
 
         updateTabTitle(chatTab);
         return tabPanel;
@@ -169,11 +170,15 @@ public class ChatLayout {
         String[] messages = textArea.getText().split("\n");
         textArea.setText("");
 
-        // TODO send via network
+        ChatTab lookup = ChatTab.lookup(tabPanel);
+
+        // Send via network
+        for (String message : messages) {
+            lookup.getServer().announceMessage(new Message(new Date(), lookup.getUsername(), message));
+        }
 
         // Temporary
-        ChatTab lookup = ChatTab.lookup(tabPanel);
-        lookup.addMessage(lookup.getUsername(), messages, new Date());
+        //lookup.addMessage(lookup.getUsername(), messages, new Date());
     }
 
     public static void main(String[] args) {
@@ -181,6 +186,7 @@ public class ChatLayout {
         frame.setContentPane(new ChatLayout().mainPanel);
         frame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
         frame.pack();
+        frame.setLocationRelativeTo(null);
         frame.setVisible(true);
     }
 

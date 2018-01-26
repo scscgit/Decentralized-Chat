@@ -52,6 +52,7 @@ public class ChatTab {
 
     public void setServer(ChatNodeServer server) {
         this.server = server;
+        this.server.setChatTab(this);
     }
 
     public void onDisconnect() {
