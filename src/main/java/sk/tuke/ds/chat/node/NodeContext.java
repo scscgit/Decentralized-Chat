@@ -1,28 +1,32 @@
 package sk.tuke.ds.chat.node;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.io.Serializable;
+import java.util.HashSet;
+import java.util.Set;
 
-public class NodeContext {
+public class NodeContext implements Serializable {
 
-    private List<String> peers;
-    private List<Message> messages;
+    private Set<String> peers;
+    private Blockchain blockchain;
 
-    public NodeContext() {
-        this.peers = new ArrayList<>();
-        this.messages = new ArrayList<>();
-    }
-
-    public NodeContext(List<String> peers, List<Message> messages) {
+    public NodeContext(Set<String> peers, Blockchain blockchain) {
         this.peers = peers;
-        this.messages = messages;
+        this.blockchain = blockchain;
     }
 
-    public List<String> getPeers() {
-        return peers;
+    public synchronized Set<String> getPeersCopy() {
+        return new HashSet<>(peers);
     }
 
-    public List<Message> getMessages() {
-        return messages;
+    public Blockchain getBlockchain() {
+        return blockchain;
+    }
+
+    public synchronized boolean addPeer(String peerNodeIdString) {
+        return !this.peers.contains(peerNodeIdString) && this.peers.add(peerNodeIdString);
+    }
+
+    public synchronized void removePeer(String peerNodeIdString) {
+        this.peers.remove(peerNodeIdString);
     }
 }

@@ -2,10 +2,11 @@ package sk.tuke.ds.chat.node;
 
 import sk.tuke.ds.chat.util.Log;
 
+import java.io.Serializable;
 import java.util.*;
 import java.util.stream.Collectors;
 
-public class Blockchain {
+public class Blockchain implements Serializable {
 
     public static final int START_DIFFICULTY = 4;
 
@@ -32,13 +33,17 @@ public class Blockchain {
         return this.chain.get(this.chain.size() - 1);
     }
 
-    public synchronized boolean addToBlockchain(Block block) {
+    /**
+     * @return null if successful, Messages if they are duplicates and should be removed from the queue
+     */
+    public synchronized List<Message> addToBlockchain(Block block) {
         Block lastBlock = lastBlock();
         if (lastBlock.shaHash().equals(block.getPreviousBlockHash())
                 && block.isHashValidForDifficulty(lastBlock.getNextDifficulty())) {
 
             // Ad-hoc solution for "duplicate prevention" - the same message cannot occur in 5 following blocks
             // This should instead be solved via Date of the message, which should be in the block interval
+            ArrayList<Message> duplicateMessages = new ArrayList<>();
             for (int i = this.chain.size() - 1; i > this.chain.size() - 6 && i > 0; i--) {
                 for (int j = 0; j < block.getMessages().size(); j++) {
                     Message messageToAssertNonDuplicate = block.getMessages().get(j);
@@ -47,15 +52,18 @@ public class Blockchain {
                     )) {
                         Log.e(this,
                                 "Attempted to add a duplicate message, which was already in a blockchain");
-                        return false;
+                        duplicateMessages.add(messageToAssertNonDuplicate);
                     }
                 }
             }
+            if (!duplicateMessages.isEmpty()) {
+                return duplicateMessages;
+            }
 
             this.chain.add(block);
-            return true;
+            return null;
         }
-        return false;
+        return new ArrayList<>();
     }
 
     public void addSingleMessageBlockByMining(Message message) {
@@ -64,7 +72,7 @@ public class Blockchain {
             Log.i(this, "Mining a single-message block (for message " + message.getMessage() + ")...");
             block = new Block(lastBlock(), Collections.singletonList(message));
             block.mineBlock(new Random().nextInt(), () -> false);
-        } while (!addToBlockchain(block));
+        } while (addToBlockchain(block) != null);
     }
 
     public int getDifficulty() {
@@ -84,7 +92,12 @@ public class Blockchain {
         return true;
     }
 
-    public synchronized void joinBlockchain(Blockchain otherBlockchain) {
+    public synchronized boolean joinBlockchain(Blockchain otherBlockchain) {
+        if (lastBlock().shaHash().equals(otherBlockchain.lastBlock().shaHash())) {
+            // Blockchains are OK
+            return false;
+        }
+        // Conflict resolution
         for (int myBlockchainIndex = this.chain.size() - 1;
              myBlockchainIndex > 0;
              myBlockchainIndex--
@@ -126,5 +139,6 @@ public class Blockchain {
                 }
             }
         }
+        return true;
     }
 }

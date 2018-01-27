@@ -2,7 +2,6 @@ package sk.tuke.ds.chat.layouts;
 
 import javafx.scene.input.KeyCode;
 import sk.tuke.ds.chat.node.Message;
-import sk.tuke.ds.chat.node.NodeContext;
 import sk.tuke.ds.chat.node.NodeId;
 import sk.tuke.ds.chat.rmi.ChatNodeServer;
 import sk.tuke.ds.chat.util.Log;
@@ -14,7 +13,7 @@ import java.awt.event.KeyEvent;
 import java.net.UnknownHostException;
 import java.rmi.RemoteException;
 import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 
@@ -52,13 +51,12 @@ public class ChatLayout {
             try {
                 createTab(new ChatNodeServer(
                         Integer.parseInt(this.clientHostPortTextField.getText()),
-                        new NodeContext(
-                                Arrays.asList(new NodeId(
+                        new ArrayList<>(Collections.singletonList(
+                                new NodeId(
                                         Integer.parseInt(this.peerNodePortTextField.getText()),
                                         this.peerNodeIpTextField.getText()
-                                ).getNodeIdString()),
-                                new ArrayList<>()
-                        )
+                                ).getNodeIdString()
+                        ))
                 ));
             } catch (RemoteException | UnknownHostException e) {
                 e.printStackTrace();
@@ -70,10 +68,7 @@ public class ChatLayout {
             try {
                 createTab(new ChatNodeServer(
                         Integer.parseInt(this.clientHostPortTextField.getText()),
-                        new NodeContext(
-                                new ArrayList<>(),
-                                new ArrayList<>()
-                        )
+                        new ArrayList<>()
                 ));
             } catch (RemoteException | UnknownHostException e) {
                 e.printStackTrace();
@@ -118,8 +113,8 @@ public class ChatLayout {
 
     private String generateTabTitle(ChatTab chatTab, String username) {
         // Get first peer node id
-        List<String> peers = chatTab.getServer().getContext().getPeers();
-        String peerNodeIdString = peers.size() > 0 ? chatTab.getServer().getContext().getPeers().get(0) : null;
+        List<String> peers = new ArrayList<>(chatTab.getServer().getContext().getPeersCopy());
+        String peerNodeIdString = peers.size() > 0 ? peers.get(0) : null;
         NodeId peerNodeId = new NodeId(peerNodeIdString);
         // Get this node id too
         NodeId thisServerNodeId = chatTab.getServer().getNodeId();

@@ -57,7 +57,7 @@ public class Util {
     }
 
     @SuppressWarnings("unchecked")
-    public static <T extends Remote> T rmiLookup(NodeId nodeId, String serviceName) {
+    public static <T extends Remote> T rmiTryLookup(NodeId nodeId, String serviceName) {
         try {
             return (T) LocateRegistry.getRegistry(
                     nodeId.getHostAddress(),

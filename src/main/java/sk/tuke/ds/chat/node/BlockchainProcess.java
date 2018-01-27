@@ -12,31 +12,31 @@ public class BlockchainProcess {
     private final AbstractProcess process;
     private List<Message> queuedMessages = new ArrayList<>();
     private List<Message> miningUnqueuedMessages = new ArrayList<>();
-    private Blockchain blockchain;
     private boolean shouldCancel;
 
     public BlockchainProcess(ChatNodeServer chatNodeServer, Blockchain blockchain) {
-        this.blockchain = blockchain;
         this.process = new AbstractProcess() {
             @Override
             public void run() {
                 while (isRunning()) {
                     // Cancelling already-mined messages in a blockchain
-                    for (Message miningUnqueuedMessage : miningUnqueuedMessages) {
-                        for (Message queuedMessage : queuedMessages) {
-                            if (miningUnqueuedMessage.shaHash().equals(queuedMessage.shaHash())) {
-                                Log.d(this,
-                                        "Message SHA256 " + queuedMessage.shaHash()
-                                                + " is no longer required to be mined");
-                                miningUnqueuedMessages.remove(miningUnqueuedMessage);
-                                queuedMessages.remove(queuedMessage);
+                    synchronized (BlockchainProcess.this) {
+                        for (Message miningUnqueuedMessage : new ArrayList<>(miningUnqueuedMessages)) {
+                            for (Message queuedMessage : new ArrayList<>(queuedMessages)) {
+                                if (miningUnqueuedMessage.shaHash().equals(queuedMessage.shaHash())) {
+                                    Log.d(this,
+                                            "Message SHA256 " + queuedMessage.shaHash()
+                                                    + " is no longer required to be mined");
+                                    miningUnqueuedMessages.remove(miningUnqueuedMessage);
+                                    queuedMessages.remove(queuedMessage);
+                                }
                             }
                         }
                     }
 
                     // Preparing messages
                     List<Message> messages = null;
-                    synchronized (this) {
+                    synchronized (BlockchainProcess.this) {
                         if (!queuedMessages.isEmpty()) {
                             messages = queuedMessages;
                             // After copying the instance of ArrayList, previous reference mustn't communicate with it
@@ -49,21 +49,29 @@ public class BlockchainProcess {
                         Block block = new Block(blockchain.lastBlock(), messages).mineBlock(0, () -> shouldCancel);
                         shouldCancel = false;
                         if (block == null) {
-                            Log.i(this, "Cancelled mining block with " + block.getMessages().size() + " messages");
-                            queuedMessages.addAll(messages);
-                        } else if (!blockchain.addToBlockchain(block)) {
-                            Log.i(this,
-                                    "Failed to add an own mined block with "
-                                            + block.getMessages().size()
-                                            + " messages, SHA256 "
-                                            + block.shaHash());
-                            queuedMessages.addAll(messages);
+                            Log.i(this, "Cancelled mining block with " + messages.size() + " messages");
+                            synchronized (BlockchainProcess.this) {
+                                queuedMessages.addAll(messages);
+                            }
                         } else {
-                            Log.i(this,
-                                    "Mined and added to blockchain block with SHA256 "
-                                            + block.shaHash()
-                                            + ", announcing...");
-                            chatNodeServer.announceBlock(block);
+                            List<Message> duplicateMessages = blockchain.addToBlockchain(block);
+                            if (duplicateMessages == null) {
+                                Log.i(this,
+                                        "Mined and added to blockchain block with SHA256 "
+                                                + block.shaHash()
+                                                + ", announcing...");
+                                chatNodeServer.announceBlock(block);
+                            } else {
+                                Log.i(this,
+                                        "Failed to add an own mined block with " + block.getMessages().size()
+                                                + " messages, " + duplicateMessages.size() + " duplicates, SHA256 "
+                                                + block.shaHash());
+                                messages.removeAll(duplicateMessages);
+                                synchronized (BlockchainProcess.this) {
+                                    queuedMessages.addAll(messages);
+                                }
+                            }
+
                         }
                     }
                     // Waiting for next iteration

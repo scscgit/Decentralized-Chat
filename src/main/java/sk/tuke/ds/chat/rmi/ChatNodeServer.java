@@ -4,18 +4,20 @@ import sk.tuke.ds.chat.layouts.ChatTab;
 import sk.tuke.ds.chat.node.*;
 import sk.tuke.ds.chat.rmi.abstraction.AbstractServer;
 import sk.tuke.ds.chat.rmi.abstraction.ChatNodeConnector;
+import sk.tuke.ds.chat.rmi.abstraction.HeartbeatConnector;
 import sk.tuke.ds.chat.util.Log;
 import sk.tuke.ds.chat.util.Util;
 
 import java.net.UnknownHostException;
 import java.rmi.RemoteException;
+import java.util.HashSet;
+import java.util.List;
 
 public class ChatNodeServer extends AbstractServer implements ChatNodeConnector {
 
     private final NodeId nodeId;
     private final HeartbeatImpl heartbeater;
     private NodeContext nodeContext;
-    private Blockchain blockchain;
     private BlockchainProcess blockchainProcess;
     private ChatTab chatTab;
 
@@ -23,16 +25,24 @@ public class ChatNodeServer extends AbstractServer implements ChatNodeConnector 
      * Creates RMI registry on specified port, exports the current server object and binds it to the registry.
      *
      * @param port        specified port
-     * @param nodeContext the initial context to start the server with, specifically existing peers to try
+     * @param peerNodeIds the initial peers to start the server context with
      * @throws RemoteException
      */
-    public ChatNodeServer(int port, NodeContext nodeContext) throws RemoteException, UnknownHostException {
+    public ChatNodeServer(int port, List<String> peerNodeIds) throws RemoteException, UnknownHostException {
         super(ChatNodeConnector.SERVICE_NAME, port);
         this.nodeId = new NodeId(port);
+        // If there is a peer, then this instance should connect to existing chat instead of hosting a new Blockchain
+        if (peerNodeIds.size() > 0) {
+            HeartbeatConnector peer = Util.rmiTryLookup(new NodeId(peerNodeIds.get(0)), HeartbeatConnector.SERVICE_NAME);
+            if (peer == null) {
+                throw new RemoteException("Couldn't lookup a peer");
+            }
+            this.nodeContext = new NodeContext(new HashSet<>(peerNodeIds), peer.getBlockchain());
+        } else {
+            this.nodeContext = new NodeContext(new HashSet<>(peerNodeIds), new Blockchain());
+        }
         this.heartbeater = new HeartbeatImpl(this, port);
-        this.nodeContext = nodeContext;
-        this.blockchain = new Blockchain();
-        this.blockchainProcess = new BlockchainProcess(this, this.blockchain);
+        this.blockchainProcess = new BlockchainProcess(this, this.nodeContext.getBlockchain());
     }
 
     @Override
@@ -60,9 +70,9 @@ public class ChatNodeServer extends AbstractServer implements ChatNodeConnector 
 
     @Override
     public void receiveAnnouncedBlock(Block block) {
-        if (!this.blockchain.addToBlockchain(block)) {
+        if (this.nodeContext.getBlockchain().addToBlockchain(block) != null) {
             Log.e(this, "Received incompatible block SHA " + block.shaHash() + ", ignoring");
-            // Assuming the heartbeat will take care of this
+            // Assuming the heartbeat will take care of this, the other node should keep re-generating their messages
         } else {
             // Stop trying to mine the messages that are already processed
             block.getMessages().forEach(this.blockchainProcess::removeMinedMessage);
@@ -76,10 +86,10 @@ public class ChatNodeServer extends AbstractServer implements ChatNodeConnector 
     }
 
     public void announceMessage(Message message) {
-        receiveAnnouncedMessage(message);
+        // Don't announce to self; it is already added
         int i = 0;
-        for (String peerNodeIdString : this.nodeContext.getPeers()) {
-            ChatNodeConnector peer = Util.rmiLookup(new NodeId(peerNodeIdString), ChatNodeConnector.SERVICE_NAME);
+        for (String peerNodeIdString : this.nodeContext.getPeersCopy()) {
+            ChatNodeConnector peer = Util.rmiTryLookup(new NodeId(peerNodeIdString), ChatNodeConnector.SERVICE_NAME);
             if (peer != null) {
                 try {
                     peer.receiveAnnouncedMessage(message);
@@ -95,8 +105,8 @@ public class ChatNodeServer extends AbstractServer implements ChatNodeConnector 
     public void announceBlock(Block block) {
         receiveAnnouncedBlock(block);
         int i = 0;
-        for (String peerNodeIdString : this.nodeContext.getPeers()) {
-            ChatNodeConnector peer = Util.rmiLookup(new NodeId(peerNodeIdString), ChatNodeConnector.SERVICE_NAME);
+        for (String peerNodeIdString : this.nodeContext.getPeersCopy()) {
+            ChatNodeConnector peer = Util.rmiTryLookup(new NodeId(peerNodeIdString), ChatNodeConnector.SERVICE_NAME);
             if (peer != null) {
                 try {
                     peer.receiveAnnouncedBlock(block);
