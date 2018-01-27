@@ -75,8 +75,8 @@ public class ChatNodeServer extends AbstractServer implements ChatNodeConnector 
     @Override
     public void receiveAnnouncedMessage(Message message) {
         Log.i(this,
-                "[Server] Received an unconfirmed message from " + message.getUser()
-                        + ": " + message.getMessage());
+                "[Server] <" + getNodeId().getUsername() + "> Received an unconfirmed message from "
+                        + message.getUser() + ": " + message.getMessage());
         // Enqueue to be added to a next block
         this.blockchainProcess.addMessage(message);
     }
@@ -84,21 +84,28 @@ public class ChatNodeServer extends AbstractServer implements ChatNodeConnector 
     @Override
     public void receiveAnnouncedBlock(Block block) {
         if (this.nodeContext.getBlockchain().addToBlockchain(block) != null) {
-            Log.e(this, "[Server] Received incompatible block SHA " + block.shaHash() + ", ignoring");
+            Log.e(this,
+                    "[Server] <" + getNodeId().getUsername() + "> Received incompatible block SHA "
+                            + block.shaHash() + ", ignoring");
             // Assuming the heartbeat will take care of this, the other node should keep re-generating their messages
         } else {
             Log.i(this,
-                    "[+ Server +] Successfully received and processed block SHA " + block.shaHash()
-                            + " (containing " + block.getMessages().size() + " messages)");
+                    "[+ Server +] <" + getNodeId().getUsername() + "> Successfully received block number #"
+                            + this.nodeContext.getBlockchain().lastBlockIndex() + ", SHA256 " + block.shaHash()
+                            + " (containing " + block.getMessages().size() + " messages), processing");
             // Stop trying to mine the messages that are already processed
             block.getMessages().forEach(this.blockchainProcess::removeMinedMessage);
             // No need to keep mining the current block; it's guaranteed to be outdated, instead mine a new one ASAP
             // This is the part where concensus about choosing the true blockchain happens
             this.blockchainProcess.cancel();
             // The messages are now verified, so they should appear in the tab UI
-            for (Message message : block.getMessages()) {
-                this.chatTab.addMessage(message.getUser(), new String[]{message.getMessage()}, message.getDate());
-            }
+            displayConfirmedMessages(block);
+        }
+    }
+
+    private void displayConfirmedMessages(Block block) {
+        for (Message message : block.getMessages()) {
+            this.chatTab.addMessage(message.getUser(), new String[]{message.getMessage()}, message.getDate());
         }
     }
 
@@ -120,17 +127,18 @@ public class ChatNodeServer extends AbstractServer implements ChatNodeConnector 
     }
 
     public void announceBlock(Block block) {
-        // Don't announce to self; it is already added
+        // Don't announce to self; it is already added, only display them
+        displayConfirmedMessages(block);
         int i = 0;
         for (String peerNodeIdString : this.nodeContext.getPeersCopy()) {
             ChatNodeConnector peer = Util.rmiTryLookup(new NodeId(peerNodeIdString), ChatNodeConnector.SERVICE_NAME);
             if (peer != null) {
                 try {
                     peer.receiveAnnouncedBlock(block);
+                    i++;
                 } catch (RemoteException e) {
                     e.printStackTrace();
                 }
-                i++;
             }
         }
         Log.d(this, "Announced block SHA256 " + block.shaHash() + " to " + i + " peers");

@@ -10,6 +10,7 @@ import sk.tuke.ds.chat.util.Log;
 import sk.tuke.ds.chat.util.Util;
 
 import java.rmi.RemoteException;
+import java.util.ConcurrentModificationException;
 import java.util.Set;
 
 public class HeartbeatImpl extends AbstractServer implements HeartbeatConnector {
@@ -143,32 +144,39 @@ public class HeartbeatImpl extends AbstractServer implements HeartbeatConnector 
 
     @Override
     public NodeContext receiveHeartbeat(String fromNodeId, String toThisNodeId, NodeContext nodeContext) throws RemoteException, NodeIdOutdatedException {
-        String thisNodeIdString = this.chatNodeServer.getNodeId().getNodeIdString();
-        if (this.chatNodeServer.getContext().addPeer(fromNodeId)) {
-            Log.i(this,
-                    "[+ Heartbeat +] Received from a new peer " + fromNodeId
-                            + " on the node " + thisNodeIdString
-            );
-            refreshPeers();
+        try {
+            String thisNodeIdString = this.chatNodeServer.getNodeId().getNodeIdString();
+            if (this.chatNodeServer.getContext().addPeer(fromNodeId)) {
+                Log.i(this,
+                        "[+ Heartbeat +] Received from a new peer " + fromNodeId
+                                + " on the node " + thisNodeIdString
+                );
+                refreshPeers();
+            }
+            if (this.chatNodeServer.getContext().getBlockchain().joinBlockchain(
+                    nodeContext.getBlockchain(),
+                    this.chatNodeServer
+            )) {
+                Log.e(this,
+                        "Blockchain of peer " + fromNodeId
+                                + " JOINED on the receiver node " + thisNodeIdString);
+            } else {
+                Log.d(this, "Blockchains were OK");
+            }
+            // Successful termination; either via node id correction, or a normal return
+            if (!thisNodeIdString.equals(toThisNodeId)) {
+                Log.e(this,
+                        "[! Heartbeat !] Received to a wrong node id, " + toThisNodeId
+                                + " instead of " + thisNodeIdString + " - correcting the sender");
+                throw new NodeIdOutdatedException(thisNodeIdString, this.chatNodeServer.getContext());
+            }
+            return this.chatNodeServer.getContext();
+        } catch (ConcurrentModificationException e) {
+            // More logging
+            Log.e(this, "Internal error during Heartbeat receive");
+            e.printStackTrace();
+            throw e;
         }
-        if (this.chatNodeServer.getContext().getBlockchain().joinBlockchain(
-                nodeContext.getBlockchain(),
-                this.chatNodeServer
-        )) {
-            Log.e(this,
-                    "Blockchain of peer " + fromNodeId
-                            + " JOINED on the receiver node " + thisNodeIdString);
-        } else {
-            Log.d(this, "Blockchains were OK");
-        }
-        // Successful termination; either via node id correction, or a normal return
-        if (!thisNodeIdString.equals(toThisNodeId)) {
-            Log.e(this,
-                    "[! Heartbeat !] Received to a wrong node id, " + toThisNodeId
-                            + " instead of " + thisNodeIdString + " - correcting the sender");
-            throw new NodeIdOutdatedException(thisNodeIdString, this.chatNodeServer.getContext());
-        }
-        return this.chatNodeServer.getContext();
     }
 
     @Override

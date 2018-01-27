@@ -1,6 +1,7 @@
 package sk.tuke.ds.chat.layouts;
 
 import sk.tuke.ds.chat.rmi.ChatNodeServer;
+import sk.tuke.ds.chat.util.Log;
 import sk.tuke.ds.chat.util.Util;
 
 import javax.swing.*;
@@ -60,6 +61,9 @@ public class ChatTab {
     public void addMessage(String username, String[] messages, Date date) {
         JTextPane messagesTextPane = Util.findComponentIn(this.tabPanel, "messagesTextPane");
         for (String message : messages) {
+            Log.d(this,
+                    "[Server] <" + getServer().getNodeId().getUsername() + "> " +
+                            "displayed a confirmed message from " + username + ": " + message);
             message = message.trim();
             if (!"".equals(message)) {
                 messagesTextPane.setText(
