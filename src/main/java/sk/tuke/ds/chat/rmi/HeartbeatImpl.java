@@ -151,7 +151,10 @@ public class HeartbeatImpl extends AbstractServer implements HeartbeatConnector 
             );
             refreshPeers();
         }
-        if (this.chatNodeServer.getContext().getBlockchain().joinBlockchain(nodeContext.getBlockchain())) {
+        if (this.chatNodeServer.getContext().getBlockchain().joinBlockchain(
+                nodeContext.getBlockchain(),
+                this.chatNodeServer
+        )) {
             Log.e(this,
                     "Blockchain of peer " + fromNodeId
                             + " JOINED on the receiver node " + thisNodeIdString);

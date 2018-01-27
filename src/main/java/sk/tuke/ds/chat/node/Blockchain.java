@@ -1,5 +1,6 @@
 package sk.tuke.ds.chat.node;
 
+import sk.tuke.ds.chat.rmi.ChatNodeServer;
 import sk.tuke.ds.chat.util.Log;
 
 import java.io.Serializable;
@@ -29,8 +30,12 @@ public class Blockchain implements Serializable {
         this.chain = chain;
     }
 
+    public int lastBlockIndex() {
+        return this.chain.size() - 1;
+    }
+
     public Block lastBlock() {
-        return this.chain.get(this.chain.size() - 1);
+        return this.chain.get(lastBlockIndex());
     }
 
     /**
@@ -92,53 +97,67 @@ public class Blockchain implements Serializable {
         return true;
     }
 
-    public synchronized boolean joinBlockchain(Blockchain otherBlockchain) {
+    public synchronized boolean joinBlockchain(Blockchain otherBlockchain, ChatNodeServer thisServer) {
         if (lastBlock().shaHash().equals(otherBlockchain.lastBlock().shaHash())) {
             // Blockchains are OK
             return false;
         }
+        int shortestBlockchainLastIndex = Math.min(lastBlockIndex(), otherBlockchain.lastBlockIndex());
+        boolean thisShortest = lastBlockIndex() == shortestBlockchainLastIndex;
+
         // Conflict resolution
-        for (int myBlockchainIndex = this.chain.size() - 1;
-             myBlockchainIndex > 0;
-             myBlockchainIndex--
+        for (int blockchainIndex = shortestBlockchainLastIndex;
+             blockchainIndex > 0;
+             blockchainIndex--
                 ) {
-            Block myBlock = this.chain.get(myBlockchainIndex);
-            for (int otherBlockchainIndex = otherBlockchain.chain.size() - 1;
-                 otherBlockchainIndex > 0;
-                 otherBlockchainIndex--
-                    ) {
-                Block otherBlock = otherBlockchain.chain.get(otherBlockchainIndex);
-                if (myBlock.shaHash().equals(otherBlock.shaHash())) {
-                    // Joined blockchains; finding orphaned messages
-                    Log.i(this,
-                            "[Blockchain conflict resolution] Joined at our own chain's block "
-                                    + myBlockchainIndex + "/" + (this.chain.size() - 1)
-                                    + ", SHA256: " + this.chain.get(myBlockchainIndex).shaHash());
-                    List<Block> orphans = this.chain.subList(myBlockchainIndex + 1, this.chain.size());
-                    List<Message> orphanMessages = orphans
-                            .stream()
-                            .flatMap(block -> block.getMessages().stream())
-                            .collect(Collectors.toList());
-                    // Removing duplicate orphans that are already in the other blockchain
-                    otherBlockchain.chain.subList(otherBlockchainIndex + 1, otherBlockchain.chain.size())
-                            .stream()
-                            .flatMap(block -> block.getMessages().stream())
-                            .forEach(otherMessage -> orphanMessages.removeIf(
-                                    orphanMessage -> {
-                                        Log.i(this,
-                                                "[Blockchain conflict resolution] " +
-                                                        "Removed duplicate message " +
-                                                        orphanMessage.getUser() + ": " + orphanMessage.getMessage());
-                                        return orphanMessage.shaHash().equals(otherMessage.shaHash());
-                                    }
-                                    )
-                            );
-                    // Using other blockchain
-                    this.chain = otherBlockchain.chain;
-                    // Remembering to add the old transactions back
-                }
+            Block myBlock = this.chain.get(blockchainIndex);
+            Block otherBlock = otherBlockchain.chain.get(blockchainIndex);
+            if (!myBlock.shaHash().equals(otherBlock.shaHash())) {
+                // Joined blockchains; finding orphaned messages
+                Log.i(this,
+                        "[Blockchain conflict resolution] Diverged after our chain's block "
+                                + blockchainIndex + "/" + lastBlockIndex()
+                                + " of SHA256: " + this.chain.get(blockchainIndex).shaHash());
+                joinBlockchainAfter(
+                        blockchainIndex,
+                        thisShortest ? this : otherBlockchain,
+                        thisShortest ? otherBlockchain : this,
+                        thisServer
+                );
             }
         }
         return true;
+    }
+
+    private void joinBlockchainAfter(int blockchainIndex, Blockchain oldBlockchain, Blockchain newBlockchain, ChatNodeServer thisServer) {
+        List<Block> orphans = oldBlockchain.chain.subList(blockchainIndex + 1, oldBlockchain.lastBlockIndex() + 1);
+        List<Message> orphanMessages = orphans
+                .stream()
+                .flatMap(block -> block.getMessages().stream())
+                .collect(Collectors.toList());
+        // Removing duplicate orphans that are already in the other blockchain
+        newBlockchain.chain.subList(blockchainIndex + 1, newBlockchain.lastBlockIndex() + 1)
+                .stream()
+                .flatMap(block -> block.getMessages().stream())
+                .forEach(
+                        otherMessage -> orphanMessages.removeIf(
+                                orphanMessage -> orphanMessage.shaHash().equals(otherMessage.shaHash())
+                        )
+                );
+        // Using other blockchain
+        this.chain = newBlockchain.chain;
+        Log.i(this,
+                "[Blockchain conflict resolution] " +
+                        "Migrated to blockchain of length " + lastBlockIndex()
+                        + " having last block SHA256: " + lastBlock().shaHash()
+                        + ", returning the following orphaned messages to a mining queue:");
+        // Remembering to add the old messages that were cut out back to the blockchain mining process
+        for (int i = 0; i < orphanMessages.size(); i++) {
+            Message orphanMessage = orphanMessages.get(i);
+            Log.i(this,
+                    "[Restoring orphan " + (i + 1) + "/" + (orphanMessages.size() - 1) + "] "
+                            + orphanMessage.getUser() + ": " + orphanMessage.getMessage());
+            thisServer.receiveAnnouncedMessage(orphanMessage);
+        }
     }
 }

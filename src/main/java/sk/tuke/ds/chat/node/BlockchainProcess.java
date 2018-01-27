@@ -47,7 +47,6 @@ public class BlockchainProcess {
                     if (messages != null) {
                         Log.d(this, "Blockchain process is processing " + messages.size() + " messages");
                         Block block = new Block(blockchain.lastBlock(), messages).mineBlock(0, () -> shouldCancel);
-                        shouldCancel = false;
                         if (block == null) {
                             Log.i(this, "Cancelled mining block with " + messages.size() + " messages");
                             synchronized (BlockchainProcess.this) {
@@ -71,7 +70,6 @@ public class BlockchainProcess {
                                     queuedMessages.addAll(messages);
                                 }
                             }
-
                         }
                     }
                     // Waiting for next iteration
@@ -81,6 +79,8 @@ public class BlockchainProcess {
                     } catch (InterruptedException e) {
                         e.printStackTrace();
                     }
+                    // Cancellation is only valid if it happens during the process iteration
+                    shouldCancel = false;
                 }
             }
         };
