@@ -4,6 +4,7 @@ import javafx.scene.input.KeyCode;
 import sk.tuke.ds.chat.node.Message;
 import sk.tuke.ds.chat.node.NodeId;
 import sk.tuke.ds.chat.rmi.ChatNodeServer;
+import sk.tuke.ds.chat.rmi.abstraction.AbstractProcess;
 import sk.tuke.ds.chat.util.Log;
 import sk.tuke.ds.chat.util.Util;
 
@@ -35,7 +36,8 @@ public class ChatLayout {
     private JPanel templateTab;
     private JPanel userSettingsPanel;
     private JPanel statusPanel;
-    private static JPanel staticStatusPanel;
+    private static JLabel staticStatus;
+    private static String staticStatusMessage = null;
 
     public ChatLayout() {
         // Manually set names for the objects that are gonna be looked up (including their cloned versions)
@@ -45,7 +47,25 @@ public class ChatLayout {
         this.renameUserButton.setName("renameUserButton");
         this.disconnectButton.setName("disconnectButton");
         this.usersList.setName("usersList");
-        staticStatusPanel = statusPanel;
+        staticStatus = ((JLabel) statusPanel.getComponent(0));
+
+        // Hacky workaround to get Status working from any context
+        new AbstractProcess() {
+            @Override
+            public void run() {
+                while (isRunning()) {
+                    if (staticStatusMessage != null) {
+                        staticStatus.setText("Status: " + staticStatusMessage);
+                        staticStatusMessage = null;
+                    }
+                    try {
+                        Thread.sleep(50);
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+        }.start();
 
         // Configuration listeners
         this.connectButton.addActionListener(actionEvent -> {
@@ -93,9 +113,8 @@ public class ChatLayout {
         // Space for auto-generated listeners, don't forget to move them to generateListeners method
     }
 
-    @Deprecated
     public static void setStatus(String status) {
-        ((JLabel) staticStatusPanel.getComponent(0)).setText("Status: " + status);
+        staticStatusMessage = status;
     }
 
     private JPanel createTab(ChatNodeServer chatNodeServer) {

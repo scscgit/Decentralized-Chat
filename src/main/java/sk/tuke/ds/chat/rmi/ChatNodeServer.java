@@ -42,8 +42,11 @@ public class ChatNodeServer extends AbstractServer implements ChatNodeConnector 
             } else {
                 this.nodeContext = new NodeContext(new HashSet<>(peerNodeIds), new Blockchain());
             }
+            Log.i(this, "Starting heartbeater");
             this.heartbeater = new HeartbeatImpl(this, port);
+            Log.i(this, "Starting blockchain process");
             this.blockchainProcess = new BlockchainProcess(this, this.nodeContext.getBlockchain());
+            Log.i(this, "Node is now fully operational");
         } catch (Exception e) {
             // In the event of a constructor problem don't block RMI
             stop();
@@ -60,6 +63,7 @@ public class ChatNodeServer extends AbstractServer implements ChatNodeConnector 
                 this.heartbeater.stop();
             } finally {
                 this.blockchainProcess.stop();
+                Log.i(this, "Node is now fully stopped");
             }
         }
     }
@@ -110,7 +114,8 @@ public class ChatNodeServer extends AbstractServer implements ChatNodeConnector 
     }
 
     public void announceMessage(Message message) {
-        // Don't announce to self; it is already added
+        // Announce to self too
+        receiveAnnouncedMessage(message);
         int i = 0;
         for (String peerNodeIdString : this.nodeContext.getPeersCopy()) {
             ChatNodeConnector peer = Util.rmiTryLookup(new NodeId(peerNodeIdString), ChatNodeConnector.SERVICE_NAME);
