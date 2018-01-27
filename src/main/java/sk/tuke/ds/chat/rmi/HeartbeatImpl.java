@@ -30,12 +30,9 @@ public class HeartbeatImpl extends AbstractServer implements HeartbeatConnector 
         // Running the initial heartbeat
         HeartbeatImpl.this.chatNodeServer.getContext().getPeersCopy().forEach(
                 peerNodeId -> {
-                    try {
-                        sendHeartbeat(new NodeId(peerNodeId));
-                    } catch (RemoteException e) {
-                        e.printStackTrace();
+                    if (!sendHeartbeat(new NodeId(peerNodeId))) {
                         // This mustn't fail
-                        throw new RuntimeException(e);
+                        throw new RuntimeException("Couldn't send initial heartbeat");
                     }
                 }
         );
@@ -47,13 +44,7 @@ public class HeartbeatImpl extends AbstractServer implements HeartbeatConnector 
                     Log.i(this, "Running heartbeat from " + chatNodeServer.getNodeId().getNodeIdString());
                     HeartbeatImpl.this.chatNodeServer.getContext().getPeersCopy().forEach(
                             peerNodeId -> {
-                                try {
-                                    sendHeartbeat(new NodeId(peerNodeId));
-                                } catch (RemoteException e) {
-                                    Log.e(this, "[Heartbeat] Send failed to " + peerNodeId);
-                                    e.printStackTrace();
-                                    HeartbeatImpl.this.chatNodeServer.getContext().removePeer(peerNodeId);
-                                }
+                                sendHeartbeat(new NodeId(peerNodeId));
                             }
                     );
                     try {
@@ -68,23 +59,35 @@ public class HeartbeatImpl extends AbstractServer implements HeartbeatConnector 
         this.heartbeatProcess.start();
     }
 
-    private void sendHeartbeat(NodeId toNodeId) throws RemoteException {
-        HeartbeatConnector peer = Util.rmiTryLookup(toNodeId, HeartbeatConnector.SERVICE_NAME);
-        if (peer == null) {
-            throw new RemoteException("Couldn't lookup a peer");
-        }
+    private boolean sendHeartbeat(NodeId toNodeId) {
+        NodeContext receivedContext;
         try {
-            NodeContext receivedContext = peer.receiveHeartbeat(
-                    // Sender description
-                    this.chatNodeServer.getNodeId().getNodeIdString(),
-                    // Confirmation of receiver node ID, so that there are no duplicate entries
-                    toNodeId.getNodeIdString(),
-                    // Copying NodeContext to try to prevent ConcurrentModificationException
-                    new NodeContext(
-                            this.chatNodeServer.getContext().getPeersCopy(),
-                            this.chatNodeServer.getContext().getBlockchain()
-                    )
-            );
+            HeartbeatConnector peer = Util.rmiTryLookup(toNodeId, HeartbeatConnector.SERVICE_NAME);
+            if (peer == null) {
+                throw new RemoteException("Couldn't lookup peer via RMI");
+            }
+            try {
+                receivedContext = peer.receiveHeartbeat(
+                        // Sender description
+                        this.chatNodeServer.getNodeId().getNodeIdString(),
+                        // Confirmation of receiver node ID, so that there are no duplicate entries
+                        toNodeId.getNodeIdString(),
+                        // Copying NodeContext to try to prevent ConcurrentModificationException
+                        new NodeContext(
+                                this.chatNodeServer.getContext().getPeersCopy(),
+                                this.chatNodeServer.getContext().getBlockchain()
+                        )
+                );
+            } catch (NodeIdOutdatedException nodeIdOutdated) {
+                this.chatNodeServer.getContext().removePeer(toNodeId.getNodeIdString());
+                this.chatNodeServer.getContext().addPeer(nodeIdOutdated.getCorrectNodeId());
+                Log.e(this,
+                        "Replaced invalid node ID " + toNodeId.getNodeIdString()
+                                + " by " + nodeIdOutdated.getCorrectNodeId() + " on demand");
+                // This exception is not an error
+                receivedContext = nodeIdOutdated.getNodeContext();
+            }
+            // Processing the received context
             receivedContext.getPeersCopy()
                     .stream()
                     .filter(receivedPeer -> !this.chatNodeServer.getContext().getPeersCopy().contains(receivedPeer))
@@ -94,12 +97,13 @@ public class HeartbeatImpl extends AbstractServer implements HeartbeatConnector 
                                 "[Heartbeat] Learned new peer " + newReceivedPeer + " from a peer " + toNodeId);
                         this.chatNodeServer.getContext().addPeer(newReceivedPeer);
                     });
-        } catch (NodeIdOutdatedException nodeIdOutdated) {
-            this.chatNodeServer.getContext().removePeer(toNodeId.getNodeIdString());
-            this.chatNodeServer.getContext().addPeer(nodeIdOutdated.getCorrectNodeId());
+            return true;
+        } catch (RemoteException e) {
             Log.e(this,
-                    "Replaced invalid node ID " + toNodeId.getNodeIdString()
-                            + " by " + nodeIdOutdated.getCorrectNodeId() + " on demand");
+                    "[Heartbeat] Send failed to " + toNodeId.getNodeIdString() + ", removing from list");
+            HeartbeatImpl.this.chatNodeServer.getContext().removePeer(toNodeId.getNodeIdString());
+            e.printStackTrace();
+            return false;
         }
     }
 
@@ -119,11 +123,12 @@ public class HeartbeatImpl extends AbstractServer implements HeartbeatConnector 
         } else {
             Log.d(this, "Blockchains were OK");
         }
+        // Successful termination; either via node id correction, or a normal return
         if (!thisNodeIdString.equals(toThisNodeId)) {
             Log.e(this,
                     "[! Heartbeat !] Received to a wrong node id, " + toThisNodeId
                             + " instead of " + thisNodeIdString + " - correcting the sender");
-            throw new NodeIdOutdatedException(thisNodeIdString);
+            throw new NodeIdOutdatedException(thisNodeIdString, this.chatNodeServer.getContext());
         }
         return this.chatNodeServer.getContext();
     }

@@ -11,12 +11,16 @@ public class NodeId {
         this.nodeIdString = nodeIdString;
     }
 
-    public NodeId(int port) throws UnknownHostException {
-        this(port, Inet4Address.getLocalHost().getHostAddress());
+    public NodeId(int port, String username) throws UnknownHostException {
+        this(port, Inet4Address.getLocalHost().getHostAddress(), username);
     }
 
-    public NodeId(int port, String hostAddress) {
-        this.nodeIdString = port + ":" + hostAddress;
+    public NodeId(int port, String hostAddress, String username) {
+        set(port, hostAddress, username);
+    }
+
+    private void set(int port, String hostAddress, String username) {
+        this.nodeIdString = port + ":" + hostAddress + ":" + username;
     }
 
     public String getNodeIdString() {
@@ -29,5 +33,13 @@ public class NodeId {
 
     public String getHostAddress() {
         return this.nodeIdString.split(":")[1];
+    }
+
+    public String getUsername() {
+        return this.nodeIdString.split(":")[2];
+    }
+
+    public void setUsername(String username) {
+        set(getPort(), getHostAddress(), username);
     }
 }

@@ -54,7 +54,8 @@ public class ChatLayout {
                         new ArrayList<>(Collections.singletonList(
                                 new NodeId(
                                         Integer.parseInt(this.peerNodePortTextField.getText()),
-                                        this.peerNodeIpTextField.getText()
+                                        this.peerNodeIpTextField.getText(),
+                                        "?"
                                 ).getNodeIdString()
                         ))
                 ));
@@ -88,7 +89,7 @@ public class ChatLayout {
         ChatTab chatTab = ChatTab.lookup(tabPanel);
         chatTab.setServer(chatNodeServer);
         this.tabbedPane.addTab(
-                generateTabTitle(chatTab, "?"),
+                generateTabTitle(chatTab),
                 tabPanel
         );
         this.tabbedPane.setSelectedComponent(tabPanel);
@@ -107,11 +108,21 @@ public class ChatLayout {
         // Update assuming it's current tab
         this.tabbedPane.setTitleAt(
                 this.tabbedPane.getSelectedIndex(),
-                generateTabTitle(chatTab, chatTab.getUsername())
+                generateTabTitle(chatTab)
         );
     }
 
-    private String generateTabTitle(ChatTab chatTab, String username) {
+    private String generateTabTitle(ChatTab chatTab) {
+        NodeId thisServerNodeId = chatTab.getServer().getNodeId();
+        return thisServerNodeId.getUsername()
+                + "@"
+                + thisServerNodeId.getHostAddress()
+                + ":"
+                + thisServerNodeId.getPort();
+    }
+
+    @Deprecated
+    private String generateTabTitleAsTargetPeer(ChatTab chatTab, String username) {
         // Get first peer node id
         List<String> peers = new ArrayList<>(chatTab.getServer().getContext().getPeersCopy());
         String peerNodeIdString = peers.size() > 0 ? peers.get(0) : null;
@@ -169,7 +180,9 @@ public class ChatLayout {
 
         // Send via network
         for (String message : messages) {
-            lookup.getServer().announceMessage(new Message(new Date(), lookup.getUsername(), message));
+            lookup.getServer().announceMessage(
+                    new Message(new Date(), lookup.getServer().getNodeId().getUsername(), message)
+            );
         }
 
         // Temporary

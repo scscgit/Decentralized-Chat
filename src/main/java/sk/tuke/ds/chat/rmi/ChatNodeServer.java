@@ -30,7 +30,7 @@ public class ChatNodeServer extends AbstractServer implements ChatNodeConnector 
      */
     public ChatNodeServer(int port, List<String> peerNodeIds) throws RemoteException, UnknownHostException {
         super(ChatNodeConnector.SERVICE_NAME, port);
-        this.nodeId = new NodeId(port);
+        this.nodeId = new NodeId(port, "no-username");
         // If there is a peer, then this instance should connect to existing chat instead of hosting a new Blockchain
         if (peerNodeIds.size() > 0) {
             HeartbeatConnector peer = Util.rmiTryLookup(new NodeId(peerNodeIds.get(0)), HeartbeatConnector.SERVICE_NAME);
@@ -50,7 +50,11 @@ public class ChatNodeServer extends AbstractServer implements ChatNodeConnector 
         try {
             super.stop();
         } finally {
-            this.heartbeater.stop();
+            try {
+                this.heartbeater.stop();
+            } finally {
+                this.blockchainProcess.stop();
+            }
         }
     }
 

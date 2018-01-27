@@ -16,7 +16,6 @@ public class ChatTab {
     private static final Map<JPanel, ChatTab> chatTabMap = new HashMap<>();
 
     private JPanel tabPanel;
-    private String username;
     private ChatNodeServer server;
 
     private ChatTab(JPanel tabPanel) {
@@ -33,13 +32,10 @@ public class ChatTab {
         return ChatTab.chatTabMap.get(tabPanel);
     }
 
-    public String getUsername() {
-        return this.username;
-    }
-
     public void setUsername(String username) {
-        this.username = username;
         Util.<JTextField>findComponentIn(tabPanel, "usernameTextField").setText(username);
+        // Update other nodes' knowledge of this change on heartbeat
+        getServer().getNodeId().setUsername(username);
     }
 
     public void generateUsername() {
