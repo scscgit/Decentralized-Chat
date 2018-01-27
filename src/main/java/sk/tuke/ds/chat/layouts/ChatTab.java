@@ -6,10 +6,7 @@ import sk.tuke.ds.chat.util.Util;
 import javax.swing.*;
 import java.rmi.RemoteException;
 import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Random;
+import java.util.*;
 
 public class ChatTab {
 
@@ -49,6 +46,7 @@ public class ChatTab {
     public void setServer(ChatNodeServer server) {
         this.server = server;
         this.server.setChatTab(this);
+        refreshPeers();
     }
 
     public void onDisconnect() {
@@ -76,5 +74,21 @@ public class ChatTab {
                 );
             }
         }
+    }
+
+    public void refreshPeers() {
+        Util.<JList>findComponentIn(tabPanel, "usersList").removeAll();
+        List<String> peers = new ArrayList<>(getServer().getContext().getPeersCopy());
+        Util.<JList>findComponentIn(tabPanel, "usersList").setModel(
+                new AbstractListModel<String>() {
+                    public int getSize() {
+                        return peers.size();
+                    }
+
+                    public String getElementAt(int i) {
+                        return peers.get(i);
+                    }
+                }
+        );
     }
 }

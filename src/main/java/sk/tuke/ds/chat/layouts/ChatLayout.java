@@ -36,6 +36,7 @@ public class ChatLayout {
     private JPanel templateTab;
     private JPanel userSettingsPanel;
     private JPanel statusPanel;
+    private static JPanel staticStatusPanel;
 
     public ChatLayout() {
         // Manually set names for the objects that are gonna be looked up (including their cloned versions)
@@ -44,6 +45,8 @@ public class ChatLayout {
         this.usernameTextField.setName("usernameTextField");
         this.renameUserButton.setName("renameUserButton");
         this.disconnectButton.setName("disconnectButton");
+        this.usersList.setName("usersList");
+        staticStatusPanel = statusPanel;
 
         // Configuration listeners
         this.connectButton.addActionListener(actionEvent -> {
@@ -82,6 +85,13 @@ public class ChatLayout {
 
         // Hide the template though
         this.tabbedPane.remove(this.templateTab);
+
+        // Space for auto-generated listeners, don't forget to move them to generateListeners method
+    }
+
+    @Deprecated
+    public static void setStatus(String status) {
+        ((JLabel) staticStatusPanel.getComponent(0)).setText("Status: " + status);
     }
 
     private JPanel createTab(ChatNodeServer chatNodeServer) {
@@ -164,6 +174,17 @@ public class ChatLayout {
                     // Send message via ENTER
                     sendMessage(tabPanel);
                 }
+            }
+        });
+
+        // Selecting a user
+        JList usersList = Util.findComponentIn(tabPanel, "usersList");
+        usersList.addListSelectionListener(event -> {
+            try {
+                Util.<JTextArea>findComponentIn(tabPanel, "messageTextArea")
+                        .setText("/w " + new NodeId(usersList.getSelectedValue().toString()).getUsername() + " ");
+            } catch (Exception e) {
+                e.printStackTrace();
             }
         });
         return tabPanel;

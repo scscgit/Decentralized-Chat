@@ -188,15 +188,6 @@
                 </properties>
                 <border type="none"/>
                 <children>
-                  <component id="79f2d" class="javax.swing.JList" binding="usersList">
-                    <constraints>
-                      <grid row="0" column="2" row-span="1" col-span="1" vsize-policy="6" hsize-policy="2" anchor="0" fill="3" indent="0" use-parent-layout="false">
-                        <preferred-size width="150" height="50"/>
-                      </grid>
-                      <gridbag weightx="2.0" weighty="10.0"/>
-                    </constraints>
-                    <properties/>
-                  </component>
                   <component id="df2ca" class="javax.swing.JSeparator">
                     <constraints>
                       <grid row="1" column="0" row-span="1" col-span="3" vsize-policy="6" hsize-policy="6" anchor="0" fill="3" indent="0" use-parent-layout="false"/>
@@ -227,7 +218,7 @@
                   <scrollpane id="b1662">
                     <constraints>
                       <grid row="0" column="0" row-span="1" col-span="2" vsize-policy="7" hsize-policy="7" anchor="0" fill="3" indent="0" use-parent-layout="false"/>
-                      <gridbag weightx="0.0" weighty="0.0"/>
+                      <gridbag weightx="0.0" weighty="10.0"/>
                     </constraints>
                     <properties/>
                     <border type="none"/>
@@ -240,6 +231,22 @@
                           <editable value="false"/>
                           <enabled value="true"/>
                           <text value="# Joined chat session"/>
+                        </properties>
+                      </component>
+                    </children>
+                  </scrollpane>
+                  <scrollpane id="2c6cf">
+                    <constraints>
+                      <grid row="0" column="2" row-span="1" col-span="1" vsize-policy="7" hsize-policy="7" anchor="0" fill="3" indent="0" use-parent-layout="false"/>
+                      <gridbag weightx="2.0" weighty="10.0"/>
+                    </constraints>
+                    <properties/>
+                    <border type="none"/>
+                    <children>
+                      <component id="79f2d" class="javax.swing.JList" binding="usersList">
+                        <constraints/>
+                        <properties>
+                          <layoutOrientation value="1"/>
                         </properties>
                       </component>
                     </children>
@@ -265,11 +272,20 @@
             </constraints>
             <properties>
               <enabled value="true"/>
-              <text value="Status: Disconnected"/>
+              <text value="Status: Ready"/>
             </properties>
           </component>
         </children>
       </grid>
+      <scrollpane id="3ab42">
+        <constraints>
+          <grid row="0" column="1" row-span="1" col-span="1" vsize-policy="7" hsize-policy="7" anchor="0" fill="3" indent="0" use-parent-layout="false"/>
+          <gridbag weightx="0.0" weighty="0.0"/>
+        </constraints>
+        <properties/>
+        <border type="none"/>
+        <children/>
+      </scrollpane>
     </children>
   </grid>
 </form>

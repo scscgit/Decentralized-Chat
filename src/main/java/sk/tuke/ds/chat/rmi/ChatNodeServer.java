@@ -107,7 +107,7 @@ public class ChatNodeServer extends AbstractServer implements ChatNodeConnector 
     }
 
     public void announceBlock(Block block) {
-        receiveAnnouncedBlock(block);
+        // Don't announce to self; it is already added
         int i = 0;
         for (String peerNodeIdString : this.nodeContext.getPeersCopy()) {
             ChatNodeConnector peer = Util.rmiTryLookup(new NodeId(peerNodeIdString), ChatNodeConnector.SERVICE_NAME);
@@ -121,6 +121,10 @@ public class ChatNodeServer extends AbstractServer implements ChatNodeConnector 
             }
         }
         Log.d(this, "Announced block SHA256 " + block.shaHash() + " to " + i + " peers");
+    }
+
+    public ChatTab getChatTab() {
+        return chatTab;
     }
 
     public void setChatTab(ChatTab chatTab) {

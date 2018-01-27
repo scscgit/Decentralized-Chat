@@ -84,6 +84,7 @@ public class HeartbeatImpl extends AbstractServer implements HeartbeatConnector 
                 Log.e(this,
                         "Replaced invalid node ID " + toNodeId.getNodeIdString()
                                 + " by " + nodeIdOutdated.getCorrectNodeId() + " on demand");
+                refreshPeers();
                 // This exception is not an error
                 receivedContext = nodeIdOutdated.getNodeContext();
             }
@@ -96,14 +97,23 @@ public class HeartbeatImpl extends AbstractServer implements HeartbeatConnector 
                         Log.i(this,
                                 "[Heartbeat] Learned new peer " + newReceivedPeer + " from a peer " + toNodeId);
                         this.chatNodeServer.getContext().addPeer(newReceivedPeer);
+                        refreshPeers();
                     });
             return true;
         } catch (RemoteException e) {
             Log.e(this,
                     "[Heartbeat] Send failed to " + toNodeId.getNodeIdString() + ", removing from list");
             HeartbeatImpl.this.chatNodeServer.getContext().removePeer(toNodeId.getNodeIdString());
+            refreshPeers();
             e.printStackTrace();
             return false;
+        }
+    }
+
+    private void refreshPeers() {
+        // Is null during the first heartbeat
+        if (this.chatNodeServer.getChatTab() != null) {
+            this.chatNodeServer.getChatTab().refreshPeers();
         }
     }
 
@@ -115,6 +125,7 @@ public class HeartbeatImpl extends AbstractServer implements HeartbeatConnector 
                     "[+ Heartbeat +] Received from a new peer " + fromNodeId
                             + " on the node " + thisNodeIdString
             );
+            refreshPeers();
         }
         if (this.chatNodeServer.getContext().getBlockchain().joinBlockchain(nodeContext.getBlockchain())) {
             Log.e(this,
