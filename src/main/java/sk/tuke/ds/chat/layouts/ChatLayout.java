@@ -13,7 +13,6 @@ import java.awt.event.KeyEvent;
 import java.net.UnknownHostException;
 import java.rmi.RemoteException;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 
@@ -52,15 +51,20 @@ public class ChatLayout {
         this.connectButton.addActionListener(actionEvent -> {
             // Connect to IP
             try {
+                int hostPort = Integer.parseInt(this.clientHostPortTextField.getText());
+                ArrayList<String> peers = new ArrayList<>();
+                // Chosen peer ID
+                peers.add(new NodeId(
+                        Integer.parseInt(this.peerNodePortTextField.getText()),
+                        this.peerNodeIpTextField.getText(),
+                        "?"
+                ).getNodeIdString());
+                // Persisted other known peers
+                peers.addAll(Util.loadPeersConfiguration(hostPort));
+                // Connection
                 createTab(new ChatNodeServer(
-                        Integer.parseInt(this.clientHostPortTextField.getText()),
-                        new ArrayList<>(Collections.singletonList(
-                                new NodeId(
-                                        Integer.parseInt(this.peerNodePortTextField.getText()),
-                                        this.peerNodeIpTextField.getText(),
-                                        "?"
-                                ).getNodeIdString()
-                        ))
+                        hostPort,
+                        peers
                 ));
             } catch (RemoteException | UnknownHostException e) {
                 e.printStackTrace();

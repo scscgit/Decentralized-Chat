@@ -90,5 +90,6 @@ public class ChatTab {
                     }
                 }
         );
+        Util.savePeersConfiguration(peers, getServer().getNodeId().getPort());
     }
 }

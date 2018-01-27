@@ -30,19 +30,25 @@ public class ChatNodeServer extends AbstractServer implements ChatNodeConnector 
      */
     public ChatNodeServer(int port, List<String> peerNodeIds) throws RemoteException, UnknownHostException {
         super(ChatNodeConnector.SERVICE_NAME, port);
-        this.nodeId = new NodeId(port, "no-username");
-        // If there is a peer, then this instance should connect to existing chat instead of hosting a new Blockchain
-        if (peerNodeIds.size() > 0) {
-            HeartbeatConnector peer = Util.rmiTryLookup(new NodeId(peerNodeIds.get(0)), HeartbeatConnector.SERVICE_NAME);
-            if (peer == null) {
-                throw new RemoteException("Couldn't lookup a peer");
+        try {
+            this.nodeId = new NodeId(port, "no-username");
+            // If there is a peer, then this instance should connect to existing chat instead of hosting a new Blockchain
+            if (peerNodeIds.size() > 0) {
+                HeartbeatConnector peer = Util.rmiTryLookup(new NodeId(peerNodeIds.get(0)), HeartbeatConnector.SERVICE_NAME);
+                if (peer == null) {
+                    throw new RemoteException("Couldn't lookup a peer");
+                }
+                this.nodeContext = new NodeContext(new HashSet<>(peerNodeIds), peer.getBlockchain());
+            } else {
+                this.nodeContext = new NodeContext(new HashSet<>(peerNodeIds), new Blockchain());
             }
-            this.nodeContext = new NodeContext(new HashSet<>(peerNodeIds), peer.getBlockchain());
-        } else {
-            this.nodeContext = new NodeContext(new HashSet<>(peerNodeIds), new Blockchain());
+            this.heartbeater = new HeartbeatImpl(this, port);
+            this.blockchainProcess = new BlockchainProcess(this, this.nodeContext.getBlockchain());
+        } catch (Exception e) {
+            // In the event of a constructor problem don't block RMI
+            stop();
+            throw e;
         }
-        this.heartbeater = new HeartbeatImpl(this, port);
-        this.blockchainProcess = new BlockchainProcess(this, this.nodeContext.getBlockchain());
     }
 
     @Override

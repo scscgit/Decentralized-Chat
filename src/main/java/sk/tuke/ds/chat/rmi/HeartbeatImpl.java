@@ -10,6 +10,7 @@ import sk.tuke.ds.chat.util.Log;
 import sk.tuke.ds.chat.util.Util;
 
 import java.rmi.RemoteException;
+import java.util.Set;
 
 public class HeartbeatImpl extends AbstractServer implements HeartbeatConnector {
 
@@ -88,12 +89,35 @@ public class HeartbeatImpl extends AbstractServer implements HeartbeatConnector 
                 // This exception is not an error
                 receivedContext = nodeIdOutdated.getNodeContext();
             }
-            // Processing the received context
+            // Processing the received context, specifying ignored peers and then adding the rest
+            Set<String> knownPeersOrSelf = this.chatNodeServer.getContext().getPeersCopy();
+            // Skip self too
+            knownPeersOrSelf.add(this.chatNodeServer.getNodeId().getNodeIdString());
             receivedContext.getPeersCopy()
                     .stream()
-                    .filter(receivedPeer -> !this.chatNodeServer.getContext().getPeersCopy().contains(receivedPeer))
-                    .filter(receivedPeer -> !receivedPeer.equals(this.chatNodeServer.getNodeId().getNodeIdString()))
+                    // Filter only ones whose IP and Host Address combination aren't added yet
+                    .filter(receivedPeer -> {
+                                String receivedPeerAddressOnly =
+                                        new NodeId(receivedPeer).getPort()
+                                                + ":"
+                                                + new NodeId(receivedPeer).getHostAddress();
+                                return knownPeersOrSelf
+                                        .stream()
+                                        .map(peerNodeIdString ->
+                                                new NodeId(peerNodeIdString).getPort()
+                                                        + ":"
+                                                        + new NodeId(peerNodeIdString).getHostAddress()
+                                        ).noneMatch(peerAddressOnly -> peerAddressOnly.equals(receivedPeerAddressOnly));
+                            }
+                    )
                     .forEach(newReceivedPeer -> {
+                        // Try the validity of the peer (don't add dead nodes)
+                        try {
+                            Util.rmiTryLookup(new NodeId(newReceivedPeer), HeartbeatConnector.SERVICE_NAME);
+                        } catch (Exception e) {
+                            Log.e(this, "[Heartbeat] Not adding a dead peer " + newReceivedPeer);
+                            return;
+                        }
                         Log.i(this,
                                 "[Heartbeat] Learned new peer " + newReceivedPeer + " from a peer " + toNodeId);
                         this.chatNodeServer.getContext().addPeer(newReceivedPeer);

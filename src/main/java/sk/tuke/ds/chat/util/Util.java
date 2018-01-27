@@ -8,6 +8,8 @@ import java.rmi.NotBoundException;
 import java.rmi.Remote;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
+import java.util.ArrayList;
+import java.util.List;
 
 public class Util {
 
@@ -68,5 +70,38 @@ public class Util {
             Log.e(Util.class, e);
             return null;
         }
+    }
+
+    public static void savePeersConfiguration(List<String> peers, int hostPort) {
+        try {
+            File file = new File("peers-config-" + hostPort + ".txt");
+            if (!file.exists()) {
+                file.createNewFile();
+            }
+            BufferedWriter writer = new BufferedWriter(new FileWriter(file));
+            for (String peer : peers) {
+                writer.write(peer + "\n");
+            }
+            writer.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public static List<String> loadPeersConfiguration(int hostPort) {
+        ArrayList<String> peers = new ArrayList<>();
+        try {
+            File file = new File("peers-config-" + hostPort + ".txt");
+            if (file.exists()) {
+                BufferedReader reader = new BufferedReader(new FileReader(file));
+                while (reader.ready()) {
+                    peers.add(reader.readLine());
+                }
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        peers.removeIf(String::isEmpty);
+        return peers;
     }
 }
