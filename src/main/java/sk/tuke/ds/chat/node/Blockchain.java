@@ -5,6 +5,7 @@ import sk.tuke.ds.chat.util.Log;
 
 import java.io.Serializable;
 import java.util.*;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 public class Blockchain implements Serializable {
@@ -159,5 +160,9 @@ public class Blockchain implements Serializable {
                             + orphanMessage.getUser() + ": " + orphanMessage.getMessage());
             thisServer.receiveAnnouncedMessage(orphanMessage);
         }
+    }
+
+    public void displayBlocksInto(Consumer<Block> consumer) {
+        this.chain.forEach(consumer);
     }
 }

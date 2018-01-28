@@ -15,6 +15,7 @@ public class ChatTab {
 
     private JPanel tabPanel;
     private ChatNodeServer server;
+    private boolean initialized;
 
     private ChatTab(JPanel tabPanel) {
         if (tabPanel == null) {
@@ -95,5 +96,13 @@ public class ChatTab {
                 }
         );
         Util.savePeersConfiguration(peers, getServer().getNodeId().getPort());
+    }
+
+    public boolean isInitialized() {
+        return this.initialized;
+    }
+
+    public boolean setInitialized() {
+        return initialized = true;
     }
 }

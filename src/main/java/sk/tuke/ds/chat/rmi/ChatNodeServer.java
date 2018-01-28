@@ -49,8 +49,11 @@ public class ChatNodeServer extends AbstractServer implements ChatNodeConnector 
             Log.i(this, "Node is now fully operational");
         } catch (Exception e) {
             // In the event of a constructor problem don't block RMI
-            stop();
-            throw e;
+            try {
+                stop();
+            } finally {
+                throw e;
+            }
         }
     }
 
@@ -155,5 +158,8 @@ public class ChatNodeServer extends AbstractServer implements ChatNodeConnector 
 
     public void setChatTab(ChatTab chatTab) {
         this.chatTab = chatTab;
+        getContext().getBlockchain().displayBlocksInto(this::displayConfirmedMessages);
+        // This activates the blockchain process
+        this.chatTab.setInitialized();
     }
 }

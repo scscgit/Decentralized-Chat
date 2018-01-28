@@ -43,7 +43,8 @@ public class HeartbeatImpl extends AbstractServer implements HeartbeatConnector 
             @Override
             public void run() {
                 while (isRunning()) {
-                    Log.i(this, "Running heartbeat from " + chatNodeServer.getNodeId().getNodeIdString());
+                    Log.i(HeartbeatImpl.this,
+                            "Running heartbeats from " + chatNodeServer.getNodeId().getNodeIdString());
                     HeartbeatImpl.this.chatNodeServer.getContext().getPeersCopy().forEach(
                             peerNodeId -> {
                                 sendHeartbeat(new NodeId(peerNodeId));

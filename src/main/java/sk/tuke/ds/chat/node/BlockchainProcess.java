@@ -19,6 +19,16 @@ public class BlockchainProcess {
             @Override
             public void run() {
                 while (isRunning()) {
+                    // Don't work on blockchain until the chat tab is initialized from the initial messages
+                    if (chatNodeServer.getChatTab() == null || !chatNodeServer.getChatTab().isInitialized()) {
+                        try {
+                            Thread.sleep(500);
+                        } catch (InterruptedException e) {
+                            e.printStackTrace();
+                        }
+                        Log.d(BlockchainProcess.this, "Waiting for ChatTab initialization");
+                        continue;
+                    }
                     // Cancelling already-mined messages in a blockchain
                     synchronized (BlockchainProcess.this) {
                         for (Message miningUnqueuedMessage : new ArrayList<>(miningUnqueuedMessages)) {
@@ -45,23 +55,25 @@ public class BlockchainProcess {
                     }
                     // Mining a block for messages
                     if (messages != null) {
-                        Log.d(this, "Blockchain process is processing " + messages.size() + " messages");
+                        Log.d(BlockchainProcess.this, "Blockchain process is processing " + messages.size() + " messages");
                         Block block = new Block(blockchain.lastBlock(), messages).mineBlock(0, () -> shouldCancel);
                         if (block == null) {
-                            Log.i(this, "Cancelled mining block with " + messages.size() + " messages");
+                            Log.i(BlockchainProcess.this,
+                                    "Cancelled mining block with " + messages.size() + " messages");
                             synchronized (BlockchainProcess.this) {
                                 queuedMessages.addAll(messages);
                             }
                         } else {
                             List<Message> duplicateMessages = blockchain.addToBlockchain(block);
                             if (duplicateMessages == null) {
-                                Log.i(this,
-                                        "Mined and added to blockchain block with SHA256 "
-                                                + block.shaHash()
-                                                + ", announcing...");
+                                Log.i(BlockchainProcess.this,
+                                        "Mined and added to blockchain block number #"
+                                                + blockchain.lastBlockIndex() + " with "
+                                                + block.getMessages().size() + " messages of SHA256 "
+                                                + block.shaHash() + ", announcing...");
                                 chatNodeServer.announceBlock(block);
                             } else {
-                                Log.i(this,
+                                Log.i(BlockchainProcess.this,
                                         "Failed to add an own mined block with " + block.getMessages().size()
                                                 + " messages, " + duplicateMessages.size() + " duplicates, SHA256 "
                                                 + block.shaHash());
@@ -73,7 +85,7 @@ public class BlockchainProcess {
                         }
                     }
                     // Waiting for next iteration
-                    Log.d(this, "Blockchain process ready...");
+                    Log.d(BlockchainProcess.this, "Blockchain process ready...");
                     try {
                         Thread.sleep(1000);
                     } catch (InterruptedException e) {

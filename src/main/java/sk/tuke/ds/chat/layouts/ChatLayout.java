@@ -224,9 +224,11 @@ public class ChatLayout {
 
         // Send via network
         for (String message : messages) {
-            lookup.getServer().announceMessage(
-                    new Message(new Date(), lookup.getServer().getNodeId().getUsername(), message)
-            );
+            if (!message.trim().equals("")) {
+                lookup.getServer().announceMessage(
+                        new Message(new Date(), lookup.getServer().getNodeId().getUsername(), message)
+                );
+            }
         }
 
         // Temporary
