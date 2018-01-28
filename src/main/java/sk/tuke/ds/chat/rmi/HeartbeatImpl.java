@@ -41,7 +41,7 @@ public class HeartbeatImpl extends AbstractServer implements HeartbeatConnector 
             do {
                 String next = peers.next();
                 try {
-                    succeeded |= sendHeartbeat(new NodeId(next));
+                    succeeded |= (sendHeartbeat(new NodeId(next)) != null);
                 } catch (Exception e) {
                     Log.e(this,
                             "Initial heartbeat from " + chatNodeServer.getNodeId().getNodeIdString()
@@ -62,9 +62,10 @@ public class HeartbeatImpl extends AbstractServer implements HeartbeatConnector 
                     Log.i(HeartbeatImpl.this,
                             "Running heartbeats from " + chatNodeServer.getNodeId().getNodeIdString());
                     HeartbeatImpl.this.chatNodeServer.getContext().getPeersCopy().forEach(
-                            peerNodeId -> {
-                                sendHeartbeat(new NodeId(peerNodeId));
-                            }
+                            peerNodeId ->
+                                    HeartbeatImpl.this.chatNodeServer.getContext().confirmPeer(
+                                            sendHeartbeat(new NodeId(peerNodeId))
+                                    )
                     );
                     try {
                         Thread.sleep(5000);
@@ -78,8 +79,14 @@ public class HeartbeatImpl extends AbstractServer implements HeartbeatConnector 
         this.heartbeatProcess.start();
     }
 
-    private boolean sendHeartbeat(NodeId toNodeId) {
+    /**
+     * Sends heartbeat.
+     *
+     * @return the correct node ID of a peer if confirmed, null in case of error.
+     */
+    private String sendHeartbeat(NodeId toNodeId) {
         NodeContext receivedContext;
+        String correctNodeId = toNodeId.getNodeIdString();
         try {
             HeartbeatConnector peer = Util.rmiTryLookup(toNodeId, HeartbeatConnector.SERVICE_NAME);
             if (peer == null) {
@@ -105,7 +112,7 @@ public class HeartbeatImpl extends AbstractServer implements HeartbeatConnector 
                             "Removed illegal recursive peer reference to self, former " + toNodeId.getNodeIdString() + " which is in reality " + nodeIdOutdated.getCorrectNodeId());
                     refreshPeers();
                     // When the node was self, there is no need to go on processing the context anymore
-                    return false;
+                    return null;
                 } else {
                     this.chatNodeServer.getContext().addPeer(nodeIdOutdated.getCorrectNodeId());
                     Log.e(this,
@@ -114,6 +121,7 @@ public class HeartbeatImpl extends AbstractServer implements HeartbeatConnector 
                     refreshPeers();
                     // This exception is not an error
                     receivedContext = nodeIdOutdated.getNodeContext();
+                    correctNodeId = nodeIdOutdated.getCorrectNodeId();
                 }
             }
             // Processing the received context, specifying ignored peers and then adding the rest
@@ -150,8 +158,8 @@ public class HeartbeatImpl extends AbstractServer implements HeartbeatConnector 
                         this.chatNodeServer.getContext().addPeer(newReceivedPeer);
                         refreshPeers();
                     });
-            return true;
-        } catch (RemoteException e) {
+            return correctNodeId;
+        } catch (Exception e) {
             if (ChatSettings.isRemoveDeadPeers) {
                 Log.e(this,
                         "[Heartbeat] Send failed to " + toNodeId.getNodeIdString() + ", removing from list");
@@ -162,7 +170,7 @@ public class HeartbeatImpl extends AbstractServer implements HeartbeatConnector 
                 Log.e(this, "[Heartbeat] Send failed to " + toNodeId.getNodeIdString() +
                         ", but keeping the peer on list as chosen via user settings");
             }
-            return false;
+            return null;
         }
     }
 
