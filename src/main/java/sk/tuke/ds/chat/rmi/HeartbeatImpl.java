@@ -7,11 +7,13 @@ import sk.tuke.ds.chat.node.NodeId;
 import sk.tuke.ds.chat.rmi.abstraction.AbstractProcess;
 import sk.tuke.ds.chat.rmi.abstraction.AbstractServer;
 import sk.tuke.ds.chat.rmi.abstraction.HeartbeatConnector;
+import sk.tuke.ds.chat.util.ChatSettings;
 import sk.tuke.ds.chat.util.Log;
 import sk.tuke.ds.chat.util.Util;
 
 import java.rmi.RemoteException;
 import java.util.ConcurrentModificationException;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -33,14 +35,25 @@ public class HeartbeatImpl extends AbstractServer implements HeartbeatConnector 
         this.chatNodeServer = chatNodeServer;
 
         // Running the initial heartbeat
-        HeartbeatImpl.this.chatNodeServer.getContext().getPeersCopy().forEach(
-                peerNodeId -> {
-                    if (!sendHeartbeat(new NodeId(peerNodeId))) {
-                        // This mustn't fail
-                        throw new RuntimeException("Couldn't send initial heartbeat");
-                    }
+        Iterator<String> peers = HeartbeatImpl.this.chatNodeServer.getContext().getPeersCopy().iterator();
+        if (peers.hasNext()) {
+            boolean succeeded = false;
+            do {
+                String next = peers.next();
+                try {
+                    succeeded |= sendHeartbeat(new NodeId(next));
+                } catch (Exception e) {
+                    Log.e(this,
+                            "Initial heartbeat from " + chatNodeServer.getNodeId().getNodeIdString()
+                                    + " to " + next + " failed");
                 }
-        );
+            } while (peers.hasNext());
+            // Only the first peer is required; others were loaded from a saved configuration and may fail later on
+            if (!succeeded) {
+                // This mustn't fail - at least a single node must reply
+                throw new RuntimeException("Couldn't send initial heartbeat to any of the default peers!");
+            }
+        }
 
         this.heartbeatProcess = new AbstractProcess() {
             @Override
@@ -70,7 +83,7 @@ public class HeartbeatImpl extends AbstractServer implements HeartbeatConnector 
         try {
             HeartbeatConnector peer = Util.rmiTryLookup(toNodeId, HeartbeatConnector.SERVICE_NAME);
             if (peer == null) {
-                throw new RemoteException("Couldn't lookup peer via RMI");
+                throw new RuntimeException("Couldn't lookup peer via RMI");
             }
             try {
                 receivedContext = peer.receiveHeartbeat(
@@ -139,11 +152,16 @@ public class HeartbeatImpl extends AbstractServer implements HeartbeatConnector 
                     });
             return true;
         } catch (RemoteException e) {
-            Log.e(this,
-                    "[Heartbeat] Send failed to " + toNodeId.getNodeIdString() + ", removing from list");
-            HeartbeatImpl.this.chatNodeServer.getContext().removePeer(toNodeId.getNodeIdString());
-            refreshPeers();
-            e.printStackTrace();
+            if (ChatSettings.isRemoveDeadPeers) {
+                Log.e(this,
+                        "[Heartbeat] Send failed to " + toNodeId.getNodeIdString() + ", removing from list");
+                HeartbeatImpl.this.chatNodeServer.getContext().removePeer(toNodeId.getNodeIdString());
+                refreshPeers();
+                e.printStackTrace();
+            } else {
+                Log.e(this, "[Heartbeat] Send failed to " + toNodeId.getNodeIdString() +
+                        ", but keeping the peer on list as chosen via user settings");
+            }
             return false;
         }
     }

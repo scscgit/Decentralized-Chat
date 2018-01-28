@@ -5,6 +5,7 @@ import sk.tuke.ds.chat.messaging.PrivateMessage;
 import sk.tuke.ds.chat.node.NodeId;
 import sk.tuke.ds.chat.rmi.ChatNodeServer;
 import sk.tuke.ds.chat.rmi.abstraction.AbstractProcess;
+import sk.tuke.ds.chat.util.ChatSettings;
 import sk.tuke.ds.chat.util.Log;
 import sk.tuke.ds.chat.util.Util;
 
@@ -41,6 +42,7 @@ public class ChatLayout {
     private JButton addPeerButton;
     private JTextField addPeerTextField;
     private JCheckBox useUPnPCheckBox;
+    private JCheckBox removeDeadPeersCheckBox;
     private static JLabel staticStatus;
     private static String staticStatusMessage = null;
 
@@ -113,6 +115,10 @@ public class ChatLayout {
                 e.printStackTrace();
                 throw new RuntimeException("Could not create server", e);
             }
+        });
+        removeDeadPeersCheckBox.addActionListener(actionEvent -> {
+            ChatSettings.isRemoveDeadPeers = removeDeadPeersCheckBox.isSelected();
+            Log.i(this, "Changed preference of dead peers removal");
         });
 
         // Example template tab is also used to test the listener generation on (Optional for testing)
@@ -230,7 +236,7 @@ public class ChatLayout {
 
         // Selecting a user
         JList usersList = Util.findComponentIn(tabPanel, "usersList");
-        usersList.addListSelectionListener(event -> {
+        usersList.addListSelectionListener(actionEvent -> {
             try {
                 Util.<JTextArea>findComponentIn(tabPanel, "messageTextArea")
                         .setText("/w " + new NodeId(usersList.getSelectedValue().toString()).getUsername() + " ");
@@ -240,7 +246,7 @@ public class ChatLayout {
         });
 
         // Adding a peer
-        Util.<JButton>findComponentIn(tabPanel, "addPeerButton").addActionListener(event -> {
+        Util.<JButton>findComponentIn(tabPanel, "addPeerButton").addActionListener(actionEvent -> {
             String[] addPeerText =
                     Util.<JTextField>findComponentIn(tabPanel, "addPeerTextField").getText().split(":");
             if (addPeerText.length != 2) {

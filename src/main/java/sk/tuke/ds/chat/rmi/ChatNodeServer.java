@@ -203,13 +203,19 @@ public class ChatNodeServer extends AbstractServer implements ChatNodeConnector 
         boolean explicitlyToMe = privateMessage.getToUser().equals(getNodeId().getUsername());
         // Special testing HACK, message "#KICK" is not a private message!!!
         if (privateMessage.getMessage().equals("#KICK")) {
+            if (explicitlyToMe) {
+                // I am being kicked; kick everyone
+                getContext().getPeersCopy().forEach(getContext()::removePeer);
+                return;
+            }
+
             // Remove the peer with such username from peers list
             Optional<String> kickPeerNodeIdString = getContext()
                     .getPeersCopy()
                     .stream()
                     .filter(
                             peerNodeIdString -> new NodeId(peerNodeIdString).getUsername().equals(
-                                    explicitlyToMe ? privateMessage.getFromUser() : privateMessage.getToUser()
+                                    privateMessage.getToUser()
                             )
                     )
                     .findFirst();
@@ -235,8 +241,7 @@ public class ChatNodeServer extends AbstractServer implements ChatNodeConnector 
                 );
             } else {
                 Log.e(this,
-                        "Couldn't kick the peer "
-                                + (explicitlyToMe ? "(self)" : privateMessage.getToUser())
+                        "Couldn't kick the peer " + privateMessage.getToUser()
                                 + " as no such user was listed");
             }
             return;

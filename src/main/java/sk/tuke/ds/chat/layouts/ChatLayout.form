@@ -123,6 +123,16 @@
                   </component>
                 </children>
               </grid>
+              <component id="e6dcb" class="javax.swing.JCheckBox" binding="removeDeadPeersCheckBox">
+                <constraints>
+                  <grid row="9" column="1" row-span="1" col-span="1" vsize-policy="0" hsize-policy="3" anchor="0" fill="0" indent="0" use-parent-layout="false"/>
+                  <gridbag weightx="0.0" weighty="0.0"/>
+                </constraints>
+                <properties>
+                  <selected value="true"/>
+                  <text value="Remove dead peers automatically"/>
+                </properties>
+              </component>
             </children>
           </grid>
           <grid id="e5e9" binding="templateTab" layout-manager="GridBagLayout">
