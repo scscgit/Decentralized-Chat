@@ -1,4 +1,4 @@
-package sk.tuke.ds.chat.node;
+package sk.tuke.ds.chat.messaging;
 
 import org.apache.commons.codec.digest.DigestUtils;
 

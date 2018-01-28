@@ -1,7 +1,8 @@
 package sk.tuke.ds.chat.layouts;
 
 import javafx.scene.input.KeyCode;
-import sk.tuke.ds.chat.node.Message;
+import sk.tuke.ds.chat.messaging.Message;
+import sk.tuke.ds.chat.messaging.PrivateMessage;
 import sk.tuke.ds.chat.node.NodeId;
 import sk.tuke.ds.chat.rmi.ChatNodeServer;
 import sk.tuke.ds.chat.rmi.abstraction.AbstractProcess;
@@ -224,10 +225,25 @@ public class ChatLayout {
 
         // Send via network
         for (String message : messages) {
-            if (!message.trim().equals("")) {
-                lookup.getServer().announceMessage(
-                        new Message(new Date(), lookup.getServer().getNodeId().getUsername(), message)
-                );
+            message = message.trim();
+            if (!message.equals("")) {
+                if (message.startsWith("/w ")) {
+                    String[] split = message.substring(3, message.length()).split(" ");
+                    if (split.length < 2) {
+                        lookup.addNotification("Invalid whisper syntax, use the following format: /w name text");
+                        continue;
+                    }
+                    lookup.getServer().sendPrivateMessage(new PrivateMessage(
+                            new Date(),
+                            lookup.getServer().getNodeId().getUsername(),
+                            split[0],
+                            message.substring(message.lastIndexOf(split[1]), message.length())
+                    ));
+                } else {
+                    lookup.getServer().announceMessage(
+                            new Message(new Date(), lookup.getServer().getNodeId().getUsername(), message)
+                    );
+                }
             }
         }
 

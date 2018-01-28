@@ -1,7 +1,7 @@
 package sk.tuke.ds.chat.rmi.abstraction;
 
+import sk.tuke.ds.chat.messaging.Message;
 import sk.tuke.ds.chat.node.Block;
-import sk.tuke.ds.chat.node.Message;
 
 import java.rmi.Remote;
 import java.rmi.RemoteException;

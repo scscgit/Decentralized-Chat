@@ -34,7 +34,7 @@ public class ChatTab {
     public void setUsername(String username) {
         Util.<JTextField>findComponentIn(tabPanel, "usernameTextField").setText(username);
         // Update other nodes' knowledge of this change on heartbeat
-        getServer().getNodeId().setUsername(username);
+        getServer().setUsername(username);
     }
 
     public void generateUsername() {
@@ -65,20 +65,34 @@ public class ChatTab {
             Log.d(this,
                     "[Server] <" + getServer().getNodeId().getUsername() + "> " +
                             "displayed a confirmed message from " + username + ": " + message);
-            message = message.trim();
-            if (!"".equals(message)) {
-                messagesTextPane.setText(
-                        messagesTextPane.getText()
-                                + "\n"
-                                + (
-                                new SimpleDateFormat("dd.M. hh:mm:ss").format(date)
-                                        + " ["
-                                        + username
-                                        + "] > "
-                                        + message)
-                );
-            }
+            messagesTextPane.setText(
+                    messagesTextPane.getText()
+                            + "\n"
+                            + (
+                            new SimpleDateFormat("dd.M. hh:mm:ss").format(date)
+                                    + " ["
+                                    + username
+                                    + "] > "
+                                    + message)
+            );
         }
+    }
+
+    public void addPrivateMessage(String username, String message, Date date, boolean received) {
+        JTextPane messagesTextPane = Util.findComponentIn(this.tabPanel, "messagesTextPane");
+        Log.d(this,
+                "[Server] <" + getServer().getNodeId().getUsername() + "> " +
+                        "received PM from " + username + ": " + message);
+        messagesTextPane.setText(
+                messagesTextPane.getText()
+                        + "\n"
+                        + (
+                        new SimpleDateFormat("dd.M. hh:mm:ss").format(date)
+                                + (received ? (" $ Private Message $ FROM [") : (" $ Private Message $ TO ["))
+                                + username
+                                + (received ? ("] < ") : ("] > "))
+                                + message)
+        );
     }
 
     public void refreshPeers() {
@@ -102,7 +116,17 @@ public class ChatTab {
         return this.initialized;
     }
 
-    public boolean setInitialized() {
-        return initialized = true;
+    public void setInitialized() {
+        this.initialized = true;
+    }
+
+    public void addNotification(String notification) {
+        JTextPane messagesTextPane = Util.findComponentIn(this.tabPanel, "messagesTextPane");
+        messagesTextPane.setText(
+                messagesTextPane.getText()
+                        + "\n"
+                        + " * Notification: "
+                        + notification
+        );
     }
 }

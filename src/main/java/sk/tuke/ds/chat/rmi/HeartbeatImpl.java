@@ -1,5 +1,6 @@
 package sk.tuke.ds.chat.rmi;
 
+import sk.tuke.ds.chat.messaging.PrivateMessage;
 import sk.tuke.ds.chat.node.Blockchain;
 import sk.tuke.ds.chat.node.NodeContext;
 import sk.tuke.ds.chat.node.NodeId;
@@ -10,7 +11,9 @@ import sk.tuke.ds.chat.util.Log;
 import sk.tuke.ds.chat.util.Util;
 
 import java.rmi.RemoteException;
+import java.util.ArrayList;
 import java.util.ConcurrentModificationException;
+import java.util.List;
 import java.util.Set;
 
 public class HeartbeatImpl extends AbstractServer implements HeartbeatConnector {
@@ -79,7 +82,8 @@ public class HeartbeatImpl extends AbstractServer implements HeartbeatConnector 
                         new NodeContext(
                                 this.chatNodeServer.getContext().getPeersCopy(),
                                 this.chatNodeServer.getContext().getBlockchain()
-                        )
+                        ),
+                        this.chatNodeServer.getPrivateMemory().loadByUsername(toNodeId.getUsername())
                 );
             } catch (NodeIdOutdatedException nodeIdOutdated) {
                 this.chatNodeServer.getContext().removePeer(toNodeId.getNodeIdString());
@@ -144,7 +148,12 @@ public class HeartbeatImpl extends AbstractServer implements HeartbeatConnector 
     }
 
     @Override
-    public NodeContext receiveHeartbeat(String fromNodeId, String toThisNodeId, NodeContext nodeContext) throws RemoteException, NodeIdOutdatedException {
+    public NodeContext receiveHeartbeat(
+            String fromNodeId,
+            String toThisNodeId,
+            NodeContext nodeContext,
+            List<PrivateMessage> privateMessages
+    ) throws RemoteException, NodeIdOutdatedException {
         try {
             String thisNodeIdString = this.chatNodeServer.getNodeId().getNodeIdString();
             if (this.chatNodeServer.getContext().addPeer(fromNodeId)) {
@@ -163,6 +172,16 @@ public class HeartbeatImpl extends AbstractServer implements HeartbeatConnector 
                                 + " JOINED on the receiver node " + thisNodeIdString);
             } else {
                 Log.d(this, "Blockchains were OK");
+            }
+            // Comparing private memory
+            privateMessages = new ArrayList<>(privateMessages);
+            privateMessages.removeAll(
+                    this.chatNodeServer.getPrivateMemory().loadByUsername(
+                            new NodeId(fromNodeId).getUsername()
+                    )
+            );
+            if (!privateMessages.isEmpty()) {
+                privateMessages.forEach(privateMessage -> chatNodeServer.addReceivedPrivateMessage(privateMessage));
             }
             // Successful termination; either via node id correction, or a normal return
             if (!thisNodeIdString.equals(toThisNodeId)) {
@@ -184,6 +203,11 @@ public class HeartbeatImpl extends AbstractServer implements HeartbeatConnector 
     public Blockchain getBlockchain() throws RemoteException {
         return this.chatNodeServer.getContext().getBlockchain();
     }
+
+//    @Override
+//    public List<PrivateMessage> getPrivateCommunication(String username) throws RemoteException {
+//        return this.chatNodeServer.getPrivateMemory().loadByUsername(username);
+//    }
 
     @Override
     public void stop() throws RemoteException {

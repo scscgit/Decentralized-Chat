@@ -1,6 +1,7 @@
 package sk.tuke.ds.chat.node;
 
 import org.apache.commons.codec.digest.DigestUtils;
+import sk.tuke.ds.chat.messaging.Message;
 import sk.tuke.ds.chat.util.Log;
 
 import java.io.Serializable;

@@ -1,6 +1,9 @@
 package sk.tuke.ds.chat.rmi;
 
 import sk.tuke.ds.chat.layouts.ChatTab;
+import sk.tuke.ds.chat.messaging.Message;
+import sk.tuke.ds.chat.messaging.PrivateMemory;
+import sk.tuke.ds.chat.messaging.PrivateMessage;
 import sk.tuke.ds.chat.node.*;
 import sk.tuke.ds.chat.rmi.abstraction.AbstractServer;
 import sk.tuke.ds.chat.rmi.abstraction.ChatNodeConnector;
@@ -18,6 +21,7 @@ public class ChatNodeServer extends AbstractServer implements ChatNodeConnector 
     private final NodeId nodeId;
     private final HeartbeatImpl heartbeater;
     private NodeContext nodeContext;
+    private PrivateMemory privateMemory = new PrivateMemory();
     private BlockchainProcess blockchainProcess;
     private ChatTab chatTab;
 
@@ -161,5 +165,28 @@ public class ChatNodeServer extends AbstractServer implements ChatNodeConnector 
         getContext().getBlockchain().displayBlocksInto(this::displayConfirmedMessages);
         // This activates the blockchain process
         this.chatTab.setInitialized();
+    }
+
+    public void setUsername(String username) {
+        this.privateMemory.rename(getNodeId().getUsername(), username);
+        getNodeId().setUsername(username);
+    }
+
+    public PrivateMemory getPrivateMemory() {
+        return privateMemory;
+    }
+
+    public void addReceivedPrivateMessage(PrivateMessage privateMessage) {
+        getPrivateMemory().add(privateMessage);
+        getChatTab().addPrivateMessage(
+                privateMessage.getFromUser(), privateMessage.getMessage(), privateMessage.getDate(), true
+        );
+    }
+
+    public void sendPrivateMessage(PrivateMessage privateMessage) {
+        getPrivateMemory().add(privateMessage);
+        getChatTab().addPrivateMessage(
+                privateMessage.getToUser(), privateMessage.getMessage(), privateMessage.getDate(), false
+        );
     }
 }

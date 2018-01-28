@@ -1,5 +1,6 @@
 package sk.tuke.ds.chat.node;
 
+import sk.tuke.ds.chat.messaging.Message;
 import sk.tuke.ds.chat.rmi.ChatNodeServer;
 import sk.tuke.ds.chat.rmi.abstraction.AbstractProcess;
 import sk.tuke.ds.chat.util.Log;
