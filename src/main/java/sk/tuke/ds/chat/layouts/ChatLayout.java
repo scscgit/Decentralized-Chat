@@ -233,7 +233,7 @@ public class ChatLayout {
                         lookup.addNotification("Invalid whisper syntax, use the following format: /w name text");
                         continue;
                     }
-                    lookup.getServer().sendPrivateMessage(new PrivateMessage(
+                    lookup.getServer().addPrivateMessage(new PrivateMessage(
                             new Date(),
                             lookup.getServer().getNodeId().getUsername(),
                             split[0],

@@ -168,6 +168,7 @@ public class ChatNodeServer extends AbstractServer implements ChatNodeConnector 
     }
 
     public void setUsername(String username) {
+        // This is now instead handled on the receiving side too, but without rename it'll get sent back
         this.privateMemory.rename(getNodeId().getUsername(), username);
         getNodeId().setUsername(username);
     }
@@ -176,17 +177,14 @@ public class ChatNodeServer extends AbstractServer implements ChatNodeConnector 
         return privateMemory;
     }
 
-    public void addReceivedPrivateMessage(PrivateMessage privateMessage) {
+    public void addPrivateMessage(PrivateMessage privateMessage) {
         getPrivateMemory().add(privateMessage);
+        boolean received = !privateMessage.getFromUser().equals(getNodeId().getUsername());
         getChatTab().addPrivateMessage(
-                privateMessage.getFromUser(), privateMessage.getMessage(), privateMessage.getDate(), true
-        );
-    }
-
-    public void sendPrivateMessage(PrivateMessage privateMessage) {
-        getPrivateMemory().add(privateMessage);
-        getChatTab().addPrivateMessage(
-                privateMessage.getToUser(), privateMessage.getMessage(), privateMessage.getDate(), false
+                received ? privateMessage.getFromUser() : privateMessage.getToUser(),
+                privateMessage.getMessage(),
+                privateMessage.getDate(),
+                received
         );
     }
 }

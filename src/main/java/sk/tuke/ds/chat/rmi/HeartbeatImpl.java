@@ -11,10 +11,10 @@ import sk.tuke.ds.chat.util.Log;
 import sk.tuke.ds.chat.util.Util;
 
 import java.rmi.RemoteException;
-import java.util.ArrayList;
 import java.util.ConcurrentModificationException;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 public class HeartbeatImpl extends AbstractServer implements HeartbeatConnector {
 
@@ -174,15 +174,29 @@ public class HeartbeatImpl extends AbstractServer implements HeartbeatConnector 
                 Log.d(this, "Blockchains were OK");
             }
             // Comparing private memory
-            privateMessages = new ArrayList<>(privateMessages);
+            privateMessages = privateMessages.stream()
+                    // Don't care about duplicate messages when this peer has already renamed itself
+                    // TODO: still not sure how to fix dupes without this workaround
+                    .filter(message ->
+                            message.getToUser().equals(this.chatNodeServer.getNodeId().getUsername())
+                                    || message.getFromUser().equals(this.chatNodeServer.getNodeId().getUsername())
+                    )
+                    .collect(Collectors.toList());
+            // Just to be sure of the sender correctness after rename, use his CURRENT username (on whichever side)
+            privateMessages.forEach(privateMessage -> {
+                if (!privateMessage.getFromUser().equals(this.chatNodeServer.getNodeId().getUsername())) {
+                    privateMessage.setFromUser(new NodeId(fromNodeId).getUsername());
+                } else if (!privateMessage.getToUser().equals(this.chatNodeServer.getNodeId().getUsername())) {
+                    privateMessage.setToUser(new NodeId(fromNodeId).getUsername());
+                }
+            });
+            // Then ignore the messages that were already received
             privateMessages.removeAll(
                     this.chatNodeServer.getPrivateMemory().loadByUsername(
                             new NodeId(fromNodeId).getUsername()
                     )
             );
-            if (!privateMessages.isEmpty()) {
-                privateMessages.forEach(privateMessage -> chatNodeServer.addReceivedPrivateMessage(privateMessage));
-            }
+            privateMessages.forEach(chatNodeServer::addPrivateMessage);
             // Successful termination; either via node id correction, or a normal return
             if (!thisNodeIdString.equals(toThisNodeId)) {
                 Log.e(this,
