@@ -24,6 +24,7 @@ public class ChatNodeServer extends AbstractServer implements ChatNodeConnector 
     private PrivateMemory privateMemory = new PrivateMemory();
     private BlockchainProcess blockchainProcess;
     private ChatTab chatTab;
+    private boolean successfullyStarted;
 
     /**
      * Creates RMI registry on specified port, exports the current server object and binds it to the registry.
@@ -51,6 +52,7 @@ public class ChatNodeServer extends AbstractServer implements ChatNodeConnector 
             Log.i(this, "Starting blockchain process");
             this.blockchainProcess = new BlockchainProcess(this, this.nodeContext.getBlockchain());
             Log.i(this, "Node is now fully operational");
+            this.successfullyStarted = true;
         } catch (Exception e) {
             // In the event of a constructor problem don't block RMI
             try {
@@ -67,10 +69,17 @@ public class ChatNodeServer extends AbstractServer implements ChatNodeConnector 
             super.stop();
         } finally {
             try {
-                this.heartbeater.stop();
+                if (this.heartbeater != null) {
+                    this.heartbeater.stop();
+                }
             } finally {
-                this.blockchainProcess.stop();
-                Log.i(this, "Node is now fully stopped");
+                if (this.blockchainProcess != null) {
+                    this.blockchainProcess.stop();
+                }
+                if (this.successfullyStarted) {
+                    // Don't expand the log if there was an error
+                    Log.i(this, "Node is now fully stopped");
+                }
             }
         }
     }

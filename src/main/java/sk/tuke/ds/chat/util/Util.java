@@ -1,9 +1,14 @@
 package sk.tuke.ds.chat.util;
 
+import org.fourthline.cling.UpnpServiceImpl;
+import org.fourthline.cling.support.igd.PortMappingListener;
+import org.fourthline.cling.support.model.PortMapping;
 import sk.tuke.ds.chat.node.NodeId;
 
 import java.awt.*;
 import java.io.*;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.rmi.NotBoundException;
 import java.rmi.Remote;
 import java.rmi.RemoteException;
@@ -103,5 +108,17 @@ public class Util {
         }
         peers.removeIf(String::isEmpty);
         return peers;
+    }
+
+    public static UpnpServiceImpl startUpnpService(int port) throws UnknownHostException {
+        PortMapping[] arr = new PortMapping[]{
+                new PortMapping(port, InetAddress.getLocalHost().getHostAddress(), PortMapping.Protocol.TCP, "Decentralized Chat client (TCP)"),
+//                new PortMapping(port, InetAddress.getLocalHost().getHostAddress(), PortMapping.Protocol.UDP, "Decentralized Chat client (UDP)")
+        };
+
+        UpnpServiceImpl upnpService = new UpnpServiceImpl(new PortMappingListener(arr));
+
+        upnpService.getControlPoint().search();
+        return upnpService;
     }
 }

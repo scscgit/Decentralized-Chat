@@ -293,7 +293,7 @@ public class ChatLayout {
     }
 
     public static void main(String[] args) {
-        JFrame frame = new JFrame("Decentralized Chat by Steve (ɔ) 2018 to infinity");
+        JFrame frame = new JFrame("Decentralized Chat by Steve (ɔ) 2018->inf");
         frame.setContentPane(new ChatLayout().mainPanel);
         frame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
         frame.pack();
