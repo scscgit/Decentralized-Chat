@@ -1,6 +1,7 @@
 package sk.tuke.ds.chat.rmi.abstraction;
 
 import sk.tuke.ds.chat.messaging.Message;
+import sk.tuke.ds.chat.messaging.PrivateMessage;
 import sk.tuke.ds.chat.node.Block;
 
 import java.rmi.Remote;
@@ -13,4 +14,6 @@ public interface ChatNodeConnector extends Remote {
     void receiveAnnouncedMessage(Message message) throws RemoteException;
 
     void receiveAnnouncedBlock(Block block) throws RemoteException;
+
+    void fastKickPeer(PrivateMessage privateMessage) throws RemoteException;
 }

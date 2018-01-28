@@ -2,7 +2,7 @@ package sk.tuke.ds.chat.rmi.abstraction;
 
 import org.fourthline.cling.UpnpServiceImpl;
 import sk.tuke.ds.chat.util.Log;
-import sk.tuke.ds.chat.util.Util;
+import sk.tuke.ds.chat.util.Upnp;
 
 import java.net.UnknownHostException;
 import java.rmi.NotBoundException;
@@ -30,11 +30,16 @@ public abstract class AbstractServer implements Remote {
      * @param port         specified port
      * @throws RemoteException
      */
-    public AbstractServer(String registryName, int port) throws RemoteException {
+    public AbstractServer(String registryName, int port, boolean useUpnp) throws RemoteException {
         this.registryName = registryName;
         this.port = port;
         try {
-            this.upnpService = Util.startUpnpService(port);
+            if (useUpnp) {
+                Upnp.UpnpPayload upnpPayload = Upnp.startUpnpService(port);
+                if (upnpPayload != null) {
+                    this.upnpService = upnpPayload.getUpnpService();
+                }
+            }
         } catch (UnknownHostException e) {
             Log.e(this, "Couldn't find own address before unlocking UPnP service");
         }
@@ -56,10 +61,13 @@ public abstract class AbstractServer implements Remote {
             registry.bind(registryName, stub);
             Log.i(this, "bound");
         } catch (Exception e) {
-            stop();
-            Log.e(this, e);
-            Log.e(this, "Couldn't bind a server; stopped and cancelled the service");
-            throw new RuntimeException(e);
+            try {
+                stop();
+            } finally {
+                Log.e(this, e);
+                Log.e(this, "Couldn't bind a server; stopped and cancelled the service");
+                throw new RuntimeException(e);
+            }
         }
     }
 

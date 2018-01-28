@@ -40,6 +40,7 @@ public class ChatLayout {
     private JPanel statusPanel;
     private JButton addPeerButton;
     private JTextField addPeerTextField;
+    private JCheckBox useUPnPCheckBox;
     private static JLabel staticStatus;
     private static String staticStatusMessage = null;
 
@@ -54,6 +55,7 @@ public class ChatLayout {
         this.sendButton.setName("sendButton");
         this.addPeerButton.setName("addPeerButton");
         this.addPeerTextField.setName("addPeerTextField");
+        this.useUPnPCheckBox.setName("useUPnPCheckBox");
         staticStatus = ((JLabel) statusPanel.getComponent(0));
 
         // Hacky workaround to get Status working from any context
@@ -91,7 +93,8 @@ public class ChatLayout {
                 // Connection
                 createTab(new ChatNodeServer(
                         hostPort,
-                        peers
+                        peers,
+                        this.useUPnPCheckBox.isSelected()
                 ));
             } catch (RemoteException | UnknownHostException e) {
                 e.printStackTrace();
@@ -103,7 +106,8 @@ public class ChatLayout {
             try {
                 createTab(new ChatNodeServer(
                         Integer.parseInt(this.clientHostPortTextField.getText()),
-                        new ArrayList<>()
+                        new ArrayList<>(),
+                        this.useUPnPCheckBox.isSelected()
                 ));
             } catch (RemoteException | UnknownHostException e) {
                 e.printStackTrace();

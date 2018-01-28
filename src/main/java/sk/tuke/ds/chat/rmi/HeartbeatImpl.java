@@ -28,8 +28,8 @@ public class HeartbeatImpl extends AbstractServer implements HeartbeatConnector 
      * @param port           specified port
      * @throws RemoteException
      */
-    public HeartbeatImpl(ChatNodeServer chatNodeServer, int port) throws RemoteException {
-        super(HeartbeatConnector.SERVICE_NAME, port);
+    public HeartbeatImpl(ChatNodeServer chatNodeServer, int port, boolean useUpnp) throws RemoteException {
+        super(HeartbeatConnector.SERVICE_NAME, port, useUpnp);
         this.chatNodeServer = chatNodeServer;
 
         // Running the initial heartbeat
@@ -238,7 +238,10 @@ public class HeartbeatImpl extends AbstractServer implements HeartbeatConnector 
 
     @Override
     public void stop() throws RemoteException {
-        super.stop();
-        this.heartbeatProcess.stop();
+        try {
+            super.stop();
+        } finally {
+            this.heartbeatProcess.stop();
+        }
     }
 }

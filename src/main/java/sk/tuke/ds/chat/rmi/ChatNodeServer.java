@@ -15,6 +15,7 @@ import java.net.UnknownHostException;
 import java.rmi.RemoteException;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 
 public class ChatNodeServer extends AbstractServer implements ChatNodeConnector {
 
@@ -33,8 +34,10 @@ public class ChatNodeServer extends AbstractServer implements ChatNodeConnector 
      * @param peerNodeIds the initial peers to start the server context with
      * @throws RemoteException
      */
-    public ChatNodeServer(int port, List<String> peerNodeIds) throws RemoteException, UnknownHostException {
-        super(ChatNodeConnector.SERVICE_NAME, port);
+    public ChatNodeServer(int port, List<String> peerNodeIds, boolean useUpnp) throws RemoteException, UnknownHostException {
+        super(ChatNodeConnector.SERVICE_NAME, port, useUpnp);
+        // Re-loading the port just in case future implementation changes
+        port = getPort();
         try {
             this.nodeId = new NodeId(port, "no-username");
             // If there is a peer, then this instance should connect to existing chat instead of hosting a new Blockchain
@@ -47,8 +50,8 @@ public class ChatNodeServer extends AbstractServer implements ChatNodeConnector 
             } else {
                 this.nodeContext = new NodeContext(new HashSet<>(peerNodeIds), new Blockchain());
             }
-            Log.i(this, "Starting heartbeater");
-            this.heartbeater = new HeartbeatImpl(this, port);
+            Log.i(this, "Starting heartbeater (without UPnP)");
+            this.heartbeater = new HeartbeatImpl(this, port, false);
             Log.i(this, "Starting blockchain process");
             this.blockchainProcess = new BlockchainProcess(this, this.nodeContext.getBlockchain());
             Log.i(this, "Node is now fully operational");
@@ -73,12 +76,15 @@ public class ChatNodeServer extends AbstractServer implements ChatNodeConnector 
                     this.heartbeater.stop();
                 }
             } finally {
-                if (this.blockchainProcess != null) {
-                    this.blockchainProcess.stop();
-                }
-                if (this.successfullyStarted) {
-                    // Don't expand the log if there was an error
-                    Log.i(this, "Node is now fully stopped");
+                try {
+                    if (this.blockchainProcess != null) {
+                        this.blockchainProcess.stop();
+                    }
+                } finally {
+                    if (this.successfullyStarted) {
+                        // Don't expand the log if there was an error
+                        Log.i(this, "Node is now fully stopped");
+                    }
                 }
             }
         }
@@ -121,6 +127,12 @@ public class ChatNodeServer extends AbstractServer implements ChatNodeConnector 
             // The messages are now verified, so they should appear in the tab UI
             displayConfirmedMessages(block);
         }
+    }
+
+    @Override
+    public void fastKickPeer(PrivateMessage privateMessage) throws RemoteException {
+        // For now this is all handled in the method for adding of a new private message
+        addPrivateMessage(privateMessage);
     }
 
     private void displayConfirmedMessages(Block block) {
@@ -187,8 +199,50 @@ public class ChatNodeServer extends AbstractServer implements ChatNodeConnector 
     }
 
     public void addPrivateMessage(PrivateMessage privateMessage) {
-        getPrivateMemory().add(privateMessage);
         boolean received = !privateMessage.getFromUser().equals(getNodeId().getUsername());
+        boolean explicitlyToMe = privateMessage.getToUser().equals(getNodeId().getUsername());
+        // Special testing HACK, message "#KICK" is not a private message!!!
+        if (privateMessage.getMessage().equals("#KICK")) {
+            // Remove the peer with such username from peers list
+            Optional<String> kickPeerNodeIdString = getContext()
+                    .getPeersCopy()
+                    .stream()
+                    .filter(
+                            peerNodeIdString -> new NodeId(peerNodeIdString).getUsername().equals(
+                                    explicitlyToMe ? privateMessage.getFromUser() : privateMessage.getToUser()
+                            )
+                    )
+                    .findFirst();
+            if (kickPeerNodeIdString.isPresent()) {
+                getContext().removePeer(kickPeerNodeIdString.get());
+                getChatTab().refreshPeers();
+                this.chatTab.addNotification("Kicked peer " + kickPeerNodeIdString.get());
+
+                // Disseminate the kick
+                getContext().getPeersCopy().forEach(
+                        peerNodeIdString -> {
+                            Optional.ofNullable(Util.<ChatNodeConnector>rmiTryLookup(
+                                    new NodeId(peerNodeIdString), ChatNodeConnector.SERVICE_NAME
+                            )).ifPresent(peer -> {
+                                try {
+                                    peer.fastKickPeer(privateMessage);
+                                    Log.d(this, "Told " + peerNodeIdString + " about the kick");
+                                } catch (RemoteException e) {
+                                    e.printStackTrace();
+                                }
+                            });
+                        }
+                );
+            } else {
+                Log.e(this,
+                        "Couldn't kick the peer "
+                                + (explicitlyToMe ? "(self)" : privateMessage.getToUser())
+                                + " as no such user was listed");
+            }
+            return;
+        }
+        // Store and display the private message
+        getPrivateMemory().add(privateMessage);
         getChatTab().addPrivateMessage(
                 received ? privateMessage.getFromUser() : privateMessage.getToUser(),
                 privateMessage.getMessage(),

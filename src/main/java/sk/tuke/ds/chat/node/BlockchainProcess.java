@@ -86,7 +86,8 @@ public class BlockchainProcess {
                         }
                     }
                     // Waiting for next iteration
-                    Log.d(BlockchainProcess.this, "Blockchain process ready...");
+                    Log.d(BlockchainProcess.this,
+                            "Blockchain process of <" + chatNodeServer.getNodeId().getUsername() + "> ready...");
                     try {
                         Thread.sleep(1000);
                     } catch (InterruptedException e) {
