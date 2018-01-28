@@ -87,13 +87,21 @@ public class HeartbeatImpl extends AbstractServer implements HeartbeatConnector 
                 );
             } catch (NodeIdOutdatedException nodeIdOutdated) {
                 this.chatNodeServer.getContext().removePeer(toNodeId.getNodeIdString());
-                this.chatNodeServer.getContext().addPeer(nodeIdOutdated.getCorrectNodeId());
-                Log.e(this,
-                        "Replaced invalid node ID " + toNodeId.getNodeIdString()
-                                + " by " + nodeIdOutdated.getCorrectNodeId() + " on demand");
-                refreshPeers();
-                // This exception is not an error
-                receivedContext = nodeIdOutdated.getNodeContext();
+                if (nodeIdOutdated.getCorrectNodeId().equals(this.chatNodeServer.getNodeId().getNodeIdString())) {
+                    Log.e(this,
+                            "Removed illegal recursive peer reference to self, former " + toNodeId.getNodeIdString() + " which is in reality " + nodeIdOutdated.getCorrectNodeId());
+                    refreshPeers();
+                    // When the node was self, there is no need to go on processing the context anymore
+                    return false;
+                } else {
+                    this.chatNodeServer.getContext().addPeer(nodeIdOutdated.getCorrectNodeId());
+                    Log.e(this,
+                            "Replaced invalid node ID " + toNodeId.getNodeIdString()
+                                    + " by " + nodeIdOutdated.getCorrectNodeId() + " on demand");
+                    refreshPeers();
+                    // This exception is not an error
+                    receivedContext = nodeIdOutdated.getNodeContext();
+                }
             }
             // Processing the received context, specifying ignored peers and then adding the rest
             Set<String> knownPeersOrSelf = this.chatNodeServer.getContext().getPeersCopy();
@@ -143,7 +151,12 @@ public class HeartbeatImpl extends AbstractServer implements HeartbeatConnector 
     private void refreshPeers() {
         // Is null during the first heartbeat
         if (this.chatNodeServer.getChatTab() != null) {
-            this.chatNodeServer.getChatTab().refreshPeers();
+            try {
+                this.chatNodeServer.getChatTab().refreshPeers();
+            } catch (Exception e) {
+                // Sometimes it throws a null problem within the Swing framework
+                Log.e(this, e);
+            }
         }
     }
 

@@ -1,6 +1,5 @@
 package sk.tuke.ds.chat.layouts;
 
-import javafx.scene.input.KeyCode;
 import sk.tuke.ds.chat.messaging.Message;
 import sk.tuke.ds.chat.messaging.PrivateMessage;
 import sk.tuke.ds.chat.node.NodeId;
@@ -10,8 +9,10 @@ import sk.tuke.ds.chat.util.Log;
 import sk.tuke.ds.chat.util.Util;
 
 import javax.swing.*;
+import javax.swing.event.MouseInputAdapter;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
+import java.awt.event.MouseEvent;
 import java.net.UnknownHostException;
 import java.rmi.RemoteException;
 import java.util.ArrayList;
@@ -37,6 +38,8 @@ public class ChatLayout {
     private JPanel templateTab;
     private JPanel userSettingsPanel;
     private JPanel statusPanel;
+    private JButton addPeerButton;
+    private JTextField addPeerTextField;
     private static JLabel staticStatus;
     private static String staticStatusMessage = null;
 
@@ -48,6 +51,9 @@ public class ChatLayout {
         this.renameUserButton.setName("renameUserButton");
         this.disconnectButton.setName("disconnectButton");
         this.usersList.setName("usersList");
+        this.sendButton.setName("sendButton");
+        this.addPeerButton.setName("addPeerButton");
+        this.addPeerTextField.setName("addPeerTextField");
         staticStatus = ((JLabel) statusPanel.getComponent(0));
 
         // Hacky workaround to get Status working from any context
@@ -171,6 +177,7 @@ public class ChatLayout {
     }
 
     private <T extends JPanel> T generateListeners(T tabPanel) {
+        ChatTab chatTab = ChatTab.lookup(tabPanel);
         // Tab configuration
         Util.<JButton>findComponentIn(tabPanel, "renameUserButton").addActionListener(e -> {
             Log.d(this, "Renaming user");
@@ -179,7 +186,6 @@ public class ChatLayout {
                 Log.e(this, "No username provided");
                 return;
             }
-            ChatTab chatTab = ChatTab.lookup(tabPanel);
             chatTab.setUsername(username);
             updateTabTitle(chatTab);
         });
@@ -192,12 +198,29 @@ public class ChatLayout {
         // Sending messages
         Util.findComponentIn(tabPanel, "messageTextArea").addKeyListener(new KeyAdapter() {
             @Override
-            public void keyReleased(KeyEvent e) {
-                super.keyReleased(e);
-                if (e.getKeyCode() == KeyCode.ENTER.impl_getCode()) {
-                    // Send message via ENTER
+            public void keyPressed(KeyEvent e) {
+                super.keyPressed(e);
+                if (e.getKeyCode() == KeyEvent.VK_ENTER) {
+                    // Send message via ENTER (on press)
                     sendMessage(tabPanel);
                 }
+            }
+
+            @Override
+            public void keyReleased(KeyEvent e) {
+                super.keyReleased(e);
+                if (e.getKeyCode() == KeyEvent.VK_ENTER) {
+                    // Send message via ENTER (on release)
+                    sendMessage(tabPanel);
+                }
+            }
+        });
+        Util.findComponentIn(tabPanel, "sendButton").addMouseListener(new MouseInputAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                super.mouseClicked(e);
+                // Send message via send button
+                sendMessage(tabPanel);
             }
         });
 
@@ -209,6 +232,24 @@ public class ChatLayout {
                         .setText("/w " + new NodeId(usersList.getSelectedValue().toString()).getUsername() + " ");
             } catch (Exception e) {
                 e.printStackTrace();
+            }
+        });
+
+        // Adding a peer
+        Util.<JButton>findComponentIn(tabPanel, "addPeerButton").addActionListener(event -> {
+            String[] addPeerText =
+                    Util.<JTextField>findComponentIn(tabPanel, "addPeerTextField").getText().split(":");
+            if (addPeerText.length != 2) {
+                chatTab.addNotification("When adding a peer please use the following format: IP_ADDRESS:PORT");
+                return;
+            }
+            try {
+                chatTab.getServer().getContext().addPeer(
+                        new NodeId(Integer.parseInt(addPeerText[1]), addPeerText[0], "no-username")
+                                .getNodeIdString()
+                );
+            } catch (NumberFormatException e) {
+                chatTab.addNotification("When adding a peer please only use numbers in place of a port");
             }
         });
         return tabPanel;
