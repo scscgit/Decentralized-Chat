@@ -128,12 +128,23 @@ public class Blockchain implements Serializable {
                         "[Blockchain conflict resolution] Diverged after our chain's block "
                                 + blockchainIndex + "/" + lastBlockIndex()
                                 + " of SHA256: " + this.chain.get(blockchainIndex).shaHash());
-                joinBlockchainAfter(
-                        blockchainIndex,
-                        thisShortest ? this : otherBlockchain,
-                        thisShortest ? otherBlockchain : this,
-                        thisServer
-                );
+                if (thisShortest) {
+                    // Swap blockchains and completely reset the chat
+                    List<Block> orphanedBlocks = this.chain;
+                    this.chain = otherBlockchain.chain;
+                    if (lastBlockIndex() == blockchainIndex) {
+                        Log.i(this, "Special case of blockchain incompatibility, " +
+                                "where the shortest chain doesn't diverge at all");
+                    }
+                    resetDisplayedMessages(orphanedBlocks, blockchainIndex + 1, thisServer);
+                } else {
+                    joinBlockchainAfter(
+                            blockchainIndex + 1,
+                            this.chain,
+                            otherBlockchain.chain,
+                            thisServer
+                    );
+                }
                 return true;
             }
         }
@@ -144,15 +155,15 @@ public class Blockchain implements Serializable {
                         "assuming other will re-announce its messages)"));
         if (thisShortest) {
             // Swap blockchains and completely reset the chat
-            Blockchain orphanedBlockchain = this;
+            List<Block> orphanedBlocks = this.chain;
             this.chain = otherBlockchain.chain;
-            resetDisplayedMessages(orphanedBlockchain, 0, thisServer);
+            resetDisplayedMessages(orphanedBlocks, 0, thisServer);
         }
         return true;
     }
 
     private void resetDisplayedMessages(
-            Blockchain orphanedBlockchain,
+            List<Block> orphanedBlocks,
             int orphanBlockchainRecoveryStartIndex,
             ChatNodeServer thisServer) {
         thisServer.getChatTab().clearMessages();
@@ -167,8 +178,8 @@ public class Blockchain implements Serializable {
                 )
         );
         // Now restore what remains of the old blockchain by mining it in a block in a cooperative way
-        orphanedBlockchain.chain
-                .subList(orphanBlockchainRecoveryStartIndex, orphanedBlockchain.chain.size())
+        orphanedBlocks
+                .subList(orphanBlockchainRecoveryStartIndex, orphanedBlocks.size())
                 .stream()
                 .flatMap(block -> block.getMessages().stream())
                 .forEach(thisServer::announceMessage);
@@ -177,16 +188,15 @@ public class Blockchain implements Serializable {
     /**
      * Copies blocks from blockchainIndex (they are supposed to be all diverged) of oldBlockchain into a newBlockchain;
      * that is, only picking unique Messages missing in newBlockchain and announcing the missing messages to be mined.
-     * The newBlockchain will become the local blockchain.
      */
-    private void joinBlockchainAfter(int blockchainIndex, Blockchain oldBlockchain, Blockchain newBlockchain, ChatNodeServer thisServer) {
-        List<Block> orphans = oldBlockchain.chain.subList(blockchainIndex + 1, oldBlockchain.lastBlockIndex() + 1);
-        List<Message> orphanMessages = orphans
+    private void joinBlockchainAfter(int blockchainIndexStart, List<Block> orphanedBlocks, List<Block> newBlocks, ChatNodeServer thisServer) {
+        List<Message> orphanMessages = orphanedBlocks
+                .subList(blockchainIndexStart, orphanedBlocks.size())
                 .stream()
                 .flatMap(block -> block.getMessages().stream())
                 .collect(Collectors.toList());
         // Removing duplicate orphans that are already in the other blockchain
-        newBlockchain.chain.subList(blockchainIndex + 1, newBlockchain.lastBlockIndex() + 1)
+        newBlocks.subList(blockchainIndexStart, newBlocks.size())
                 .stream()
                 .flatMap(block -> block.getMessages().stream())
                 .forEach(
@@ -194,8 +204,6 @@ public class Blockchain implements Serializable {
                                 orphanMessage -> orphanMessage.shaHash().equals(otherMessage.shaHash())
                         )
                 );
-        // Using other blockchain
-        this.chain = newBlockchain.chain;
         Log.i(this,
                 "[Blockchain conflict resolution] " +
                         "Migrated <" + thisServer.getNodeId().getUsername() + "> to blockchain of length "
@@ -207,7 +215,7 @@ public class Blockchain implements Serializable {
             Log.i(this,
                     "[Restoring orphan " + (i + 1) + "/" + orphanMessages.size() + "] "
                             + orphanMessage.getUser() + ": " + orphanMessage.getMessage());
-            thisServer.receiveAnnouncedMessage(orphanMessage);
+            thisServer.announceMessage(orphanMessage);
         }
     }
 
