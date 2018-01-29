@@ -16,6 +16,7 @@ import java.rmi.RemoteException;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 public class ChatNodeServer extends AbstractServer implements ChatNodeConnector {
 
@@ -217,7 +218,11 @@ public class ChatNodeServer extends AbstractServer implements ChatNodeConnector 
         if (privateMessage.getMessage().equals("#KICK")) {
             if (explicitlyToMe) {
                 // I am being kicked; kick everyone
+                Log.i(this, "Got informed that I am being kicked, kicking all");
+                getChatTab().addNotification("You were kicked by user " + privateMessage.getFromUser());
                 getContext().getPeersCopy().forEach(getContext()::removePeer);
+                getContext().getPeersUnconfirmedCopy().forEach(getContext()::removePeer);
+                getChatTab().refreshPeers();
                 return;
             }
 
@@ -235,9 +240,12 @@ public class ChatNodeServer extends AbstractServer implements ChatNodeConnector 
                 getContext().removePeer(kickPeerNodeIdString.get());
                 getChatTab().refreshPeers();
                 this.chatTab.addNotification("Kicked peer " + kickPeerNodeIdString.get());
+                Set<String> peersToTellAboutKick = getContext().getPeersCopy();
+                // Don't forget to include the kicked out one in the list of messages of peers being told about kick!
+                peersToTellAboutKick.add(kickPeerNodeIdString.get());
 
                 // Disseminate the kick
-                getContext().getPeersCopy().forEach(
+                peersToTellAboutKick.forEach(
                         peerNodeIdString -> {
                             Optional.ofNullable(Util.<ChatNodeConnector>rmiTryLookup(
                                     new NodeId(peerNodeIdString), ChatNodeConnector.SERVICE_NAME

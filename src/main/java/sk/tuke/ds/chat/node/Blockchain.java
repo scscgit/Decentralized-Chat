@@ -104,9 +104,16 @@ public class Blockchain implements Serializable {
             // Blockchains are OK
             return false;
         }
-        // The logic to decide which blockchain will survive intact (hint: it's the longer one)
-        int shortestBlockchainLastIndex = Math.min(lastBlockIndex(), otherBlockchain.lastBlockIndex());
-        boolean thisShortest = lastBlockIndex() == shortestBlockchainLastIndex;
+        // The logic to decide which blockchain will survive intact (hint: it's the longer one, otherwise compare hash)
+        int shortestBlockchainLastIndex;
+        boolean thisShortest;
+        if (lastBlockIndex() == otherBlockchain.lastBlockIndex()) {
+            thisShortest = otherBlockchain.lastBlock().shaHash().compareTo(lastBlock().shaHash()) > 0;
+            shortestBlockchainLastIndex = thisShortest ? lastBlockIndex() : otherBlockchain.lastBlockIndex();
+        } else {
+            shortestBlockchainLastIndex = Math.min(lastBlockIndex(), otherBlockchain.lastBlockIndex());
+            thisShortest = lastBlockIndex() == shortestBlockchainLastIndex;
+        }
 
         // Conflict resolution if genesis block matches
         for (int blockchainIndex = shortestBlockchainLastIndex;
@@ -136,28 +143,35 @@ public class Blockchain implements Serializable {
                         + ">; replaced by " + (thisShortest ? "other" : "our own (no change locally, " +
                         "assuming other will re-announce its messages)"));
         if (thisShortest) {
-            // Gotta re-announce all messages at the end
-            List<Message> orphans = this.chain
-                    .stream()
-                    .flatMap(block -> block.getMessages().stream())
-                    .collect(Collectors.toList());
             // Swap blockchains and completely reset the chat
+            Blockchain orphanedBlockchain = this;
             this.chain = otherBlockchain.chain;
-            thisServer.getChatTab().clearMessages();
-            // First spam all the private messages
-            thisServer.getPrivateMemory().displayAll(thisServer);
-            // Then the actual shared messages
-            this.chain.stream().flatMap(block -> block.getMessages().stream()).forEach(
-                    message -> thisServer.getChatTab().addMessage(
-                            message.getUser(),
-                            new String[]{message.getMessage()},
-                            message.getDate()
-                    )
-            );
-            // Now restore what remains of the old blockchain by mining it in a block in a cooperative way
-            orphans.forEach(thisServer::announceMessage);
+            resetDisplayedMessages(orphanedBlockchain, 0, thisServer);
         }
         return true;
+    }
+
+    private void resetDisplayedMessages(
+            Blockchain orphanedBlockchain,
+            int orphanBlockchainRecoveryStartIndex,
+            ChatNodeServer thisServer) {
+        thisServer.getChatTab().clearMessages();
+        // First spam all the private messages
+        thisServer.getPrivateMemory().displayAll(thisServer);
+        // Then the actual shared messages
+        this.chain.stream().flatMap(block -> block.getMessages().stream()).forEach(
+                message -> thisServer.getChatTab().addMessage(
+                        message.getUser(),
+                        new String[]{message.getMessage()},
+                        message.getDate()
+                )
+        );
+        // Now restore what remains of the old blockchain by mining it in a block in a cooperative way
+        orphanedBlockchain.chain
+                .subList(orphanBlockchainRecoveryStartIndex, orphanedBlockchain.chain.size())
+                .stream()
+                .flatMap(block -> block.getMessages().stream())
+                .forEach(thisServer::announceMessage);
     }
 
     /**
@@ -184,14 +198,14 @@ public class Blockchain implements Serializable {
         this.chain = newBlockchain.chain;
         Log.i(this,
                 "[Blockchain conflict resolution] " +
-                        "Migrated to blockchain of length " + lastBlockIndex()
-                        + " having last block SHA256: " + lastBlock().shaHash()
+                        "Migrated <" + thisServer.getNodeId().getUsername() + "> to blockchain of length "
+                        + lastBlockIndex() + " having last block SHA256: " + lastBlock().shaHash()
                         + ", returning the following orphaned messages to a mining queue:");
         // Remembering to add the old messages that were cut out back to the blockchain mining process
         for (int i = 0; i < orphanMessages.size(); i++) {
             Message orphanMessage = orphanMessages.get(i);
             Log.i(this,
-                    "[Restoring orphan " + (i + 1) + "/" + (orphanMessages.size() - 1) + "] "
+                    "[Restoring orphan " + (i + 1) + "/" + orphanMessages.size() + "] "
                             + orphanMessage.getUser() + ": " + orphanMessage.getMessage());
             thisServer.receiveAnnouncedMessage(orphanMessage);
         }
