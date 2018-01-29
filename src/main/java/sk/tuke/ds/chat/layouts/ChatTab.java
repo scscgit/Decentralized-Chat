@@ -96,8 +96,15 @@ public class ChatTab {
     }
 
     public void refreshPeers() {
+        // Note: this delimiter has to be able to be split on ":" and indexed as [2]. It's decorative only though
+        final String unconfirmedDelimiter = " :(Unconfirmed): ";
         Util.<JList>findComponentIn(tabPanel, "usersList").removeAll();
         List<String> peers = new ArrayList<>(getServer().getContext().getPeersCopy());
+        Set<String> peersUnconfirmedCopy = getServer().getContext().getPeersUnconfirmedCopy();
+        if (peersUnconfirmedCopy.size() > 0) {
+            peers.add(unconfirmedDelimiter);
+        }
+        peers.addAll(peersUnconfirmedCopy);
         Util.<JList>findComponentIn(tabPanel, "usersList").setModel(
                 new AbstractListModel<String>() {
                     public int getSize() {
@@ -109,6 +116,8 @@ public class ChatTab {
                     }
                 }
         );
+        List<String> realPeersWithoutDelimiter = new ArrayList<>(peers);
+        realPeersWithoutDelimiter.remove(unconfirmedDelimiter);
         Util.savePeersConfiguration(peers, getServer().getNodeId().getPort());
     }
 
@@ -127,6 +136,13 @@ public class ChatTab {
                         + "\n"
                         + " * Notification: "
                         + notification
+        );
+    }
+
+    public void clearMessages() {
+        JTextPane messagesTextPane = Util.findComponentIn(this.tabPanel, "messagesTextPane");
+        messagesTextPane.setText(
+                "* Blockchain incompatible, fully reset and joined other peers"
         );
     }
 }

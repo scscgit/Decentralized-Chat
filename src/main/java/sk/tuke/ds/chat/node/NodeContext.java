@@ -21,7 +21,7 @@ public class NodeContext implements Serializable {
     }
 
     public synchronized Set<String> getPeersUnconfirmedCopy() {
-        return new HashSet<>(peers);
+        return new HashSet<>(this.peersUnconfirmed);
     }
 
     public Blockchain getBlockchain() {

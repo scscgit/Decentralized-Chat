@@ -104,8 +104,20 @@ public class Blockchain implements Serializable {
             // Blockchains are OK
             return false;
         }
+        // The logic to decide which blockchain will survive intact (hint: it's the longer one)
         int shortestBlockchainLastIndex = Math.min(lastBlockIndex(), otherBlockchain.lastBlockIndex());
         boolean thisShortest = lastBlockIndex() == shortestBlockchainLastIndex;
+
+        if (!this.chain.get(0).shaHash().equals(otherBlockchain.chain.get(0).shaHash())) {
+            Log.e(this,
+                    "Blockchains totally incompatible; replaced by "
+                            + (thisShortest ? "other" : "our own (no change locally)"));
+            if (thisShortest) {
+                this.chain = otherBlockchain.chain;
+                thisServer.getChatTab().clearMessages();
+            }
+            return true;
+        }
 
         // Conflict resolution
         for (int blockchainIndex = shortestBlockchainLastIndex;
@@ -131,6 +143,11 @@ public class Blockchain implements Serializable {
         return true;
     }
 
+    /**
+     * Copies blocks from blockchainIndex (they are supposed to be all diverged) of oldBlockchain into a newBlockchain;
+     * that is, only picking unique Messages missing in newBlockchain and announcing the missing messages to be mined.
+     * The newBlockchain will become the local blockchain.
+     */
     private void joinBlockchainAfter(int blockchainIndex, Blockchain oldBlockchain, Blockchain newBlockchain, ChatNodeServer thisServer) {
         List<Block> orphans = oldBlockchain.chain.subList(blockchainIndex + 1, oldBlockchain.lastBlockIndex() + 1);
         List<Message> orphanMessages = orphans

@@ -59,13 +59,22 @@ public class HeartbeatImpl extends AbstractServer implements HeartbeatConnector 
             @Override
             public void run() {
                 while (isRunning()) {
+                    NodeContext context = HeartbeatImpl.this.chatNodeServer.getContext();
                     Log.i(HeartbeatImpl.this,
-                            "Running heartbeats from " + chatNodeServer.getNodeId().getNodeIdString());
-                    HeartbeatImpl.this.chatNodeServer.getContext().getPeersCopy().forEach(
-                            peerNodeId ->
-                                    HeartbeatImpl.this.chatNodeServer.getContext().confirmPeer(
-                                            sendHeartbeat(new NodeId(peerNodeId))
-                                    )
+                            "Running " + context.getPeersCopy().size()
+                                    + " + " + context.getPeersUnconfirmedCopy().size()
+                                    + " heartbeats from " + chatNodeServer.getNodeId().getNodeIdString());
+                    // First confirmed ones
+                    context.getPeersCopy().forEach(
+                            peerNodeId -> sendHeartbeat(new NodeId(peerNodeId))
+                    );
+                    // Then unconfirmed ones
+                    context.getPeersUnconfirmedCopy().forEach(
+                            peerNodeId -> {
+                                context.confirmPeer(sendHeartbeat(new NodeId(peerNodeId)));
+                                // Not refreshing after confirmation would keep the annoying :Unconfirmed: delimiter
+                                refreshPeers();
+                            }
                     );
                     try {
                         Thread.sleep(5000);
@@ -109,7 +118,9 @@ public class HeartbeatImpl extends AbstractServer implements HeartbeatConnector 
                 this.chatNodeServer.getContext().removePeer(toNodeId.getNodeIdString());
                 if (nodeIdOutdated.getCorrectNodeId().equals(this.chatNodeServer.getNodeId().getNodeIdString())) {
                     Log.e(this,
-                            "Removed illegal recursive peer reference to self, former " + toNodeId.getNodeIdString() + " which is in reality " + nodeIdOutdated.getCorrectNodeId());
+                            "Removed illegal recursive peer reference of self, former "
+                                    + toNodeId.getNodeIdString() + " which is in reality "
+                                    + nodeIdOutdated.getCorrectNodeId());
                     refreshPeers();
                     // When the node was self, there is no need to go on processing the context anymore
                     return null;
@@ -126,6 +137,8 @@ public class HeartbeatImpl extends AbstractServer implements HeartbeatConnector 
             }
             // Processing the received context, specifying ignored peers and then adding the rest
             Set<String> knownPeersOrSelf = this.chatNodeServer.getContext().getPeersCopy();
+            // Ignore unconfirmed peers too
+            knownPeersOrSelf.addAll(this.chatNodeServer.getContext().getPeersUnconfirmedCopy());
             // Skip self too
             knownPeersOrSelf.add(this.chatNodeServer.getNodeId().getNodeIdString());
             receivedContext.getPeersCopy()
@@ -195,6 +208,13 @@ public class HeartbeatImpl extends AbstractServer implements HeartbeatConnector 
     ) throws RemoteException, NodeIdOutdatedException {
         try {
             String thisNodeIdString = this.chatNodeServer.getNodeId().getNodeIdString();
+            // Case of removing self-reference
+            if (fromNodeId.equals(toThisNodeId) || fromNodeId.equals(thisNodeIdString)) {
+                Log.e(this, "[Heartbeat] Removed self-reference peer");
+                this.chatNodeServer.getContext().removePeer(toThisNodeId);
+                throw new NodeIdOutdatedException(thisNodeIdString, this.chatNodeServer.getContext());
+            }
+            // Continuing the standard heartbeat receiving
             if (this.chatNodeServer.getContext().addPeer(fromNodeId)) {
                 Log.i(this,
                         "[+ Heartbeat +] Received from a new peer " + fromNodeId

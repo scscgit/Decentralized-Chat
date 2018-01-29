@@ -41,12 +41,25 @@ public class ChatNodeServer extends AbstractServer implements ChatNodeConnector 
         try {
             this.nodeId = new NodeId(port, "no-username");
             // If there is a peer, then this instance should connect to existing chat instead of hosting a new Blockchain
+            boolean success = false;
             if (peerNodeIds.size() > 0) {
-                HeartbeatConnector peer = Util.rmiTryLookup(new NodeId(peerNodeIds.get(0)), HeartbeatConnector.SERVICE_NAME);
-                if (peer == null) {
-                    throw new RemoteException("Couldn't lookup a peer");
+                for (int i = 0; i < peerNodeIds.size(); i++) {
+                    String peerNodeId = peerNodeIds.get(i);
+                    HeartbeatConnector peer = Util.rmiTryLookup(new NodeId(peerNodeId), HeartbeatConnector.SERVICE_NAME);
+                    if (peer == null) {
+                        Log.e(this,
+                                "Couldn't connect to peer " + peerNodeId
+                                        + " (" + i + "/" + peerNodeIds.size()
+                                        + ") to download the blockchain, trying others...");
+                        continue;
+                    }
+                    this.nodeContext = new NodeContext(new HashSet<>(peerNodeIds), peer.getBlockchain());
+                    success = true;
+                    break;
                 }
-                this.nodeContext = new NodeContext(new HashSet<>(peerNodeIds), peer.getBlockchain());
+                if (!success) {
+                    throw new RemoteException("Couldn't lookup any peer to download the initial blockchain");
+                }
             } else {
                 this.nodeContext = new NodeContext(new HashSet<>(peerNodeIds), new Blockchain());
             }
