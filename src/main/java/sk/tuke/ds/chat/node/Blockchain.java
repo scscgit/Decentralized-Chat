@@ -110,16 +110,35 @@ public class Blockchain implements Serializable {
 
         if (!this.chain.get(0).shaHash().equals(otherBlockchain.chain.get(0).shaHash())) {
             Log.e(this,
-                    "Blockchains totally incompatible; replaced by "
-                            + (thisShortest ? "other" : "our own (no change locally)"));
+                    "Blockchains totally incompatible in <" + thisServer.getNodeId().getUsername()
+                            + ">; replaced by " + (thisShortest ? "other" : "our own (no change locally, " +
+                            "assuming other will re-announce its messages)"));
             if (thisShortest) {
+                // Gotta re-announce all messages at the end
+                List<Message> orphans = this.chain
+                        .stream()
+                        .flatMap(block -> block.getMessages().stream())
+                        .collect(Collectors.toList());
+                // Swap blockchains and completely reset the chat
                 this.chain = otherBlockchain.chain;
                 thisServer.getChatTab().clearMessages();
+                // First spam all the private messages
+                thisServer.getPrivateMemory().displayAll(thisServer);
+                // Then the actual shared messages
+                this.chain.stream().flatMap(block -> block.getMessages().stream()).forEach(
+                        message -> thisServer.getChatTab().addMessage(
+                                message.getUser(),
+                                new String[]{message.getMessage()},
+                                message.getDate()
+                        )
+                );
+                // Now restore what remains of the old blockchain by mining it in a block in a cooperative way
+                orphans.forEach(thisServer::announceMessage);
             }
             return true;
         }
 
-        // Conflict resolution
+        // Conflict resolution if genesis block matches
         for (int blockchainIndex = shortestBlockchainLastIndex;
              blockchainIndex > 0;
              blockchainIndex--

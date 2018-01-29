@@ -1,5 +1,7 @@
 package sk.tuke.ds.chat.messaging;
 
+import sk.tuke.ds.chat.rmi.ChatNodeServer;
+
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
@@ -29,5 +31,9 @@ public class PrivateMemory implements Serializable {
                 .stream()
                 .filter(message -> message.getToUser().equals(oldUsername))
                 .forEach(message -> message.setToUser(newUsername));
+    }
+
+    public synchronized void displayAll(ChatNodeServer chatNodeServer) {
+        this.privateMessages.forEach(chatNodeServer::displayPrivateMessage);
     }
 }

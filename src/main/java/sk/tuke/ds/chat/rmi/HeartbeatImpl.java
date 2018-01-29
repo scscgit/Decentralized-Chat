@@ -167,7 +167,8 @@ public class HeartbeatImpl extends AbstractServer implements HeartbeatConnector 
                             return;
                         }
                         Log.i(this,
-                                "[Heartbeat] Learned new peer " + newReceivedPeer + " from a peer " + toNodeId);
+                                "[Heartbeat] Learned new peer " + newReceivedPeer
+                                        + " from a peer " + toNodeId.getNodeIdString());
                         this.chatNodeServer.getContext().addPeer(newReceivedPeer);
                         refreshPeers();
                     });
@@ -181,7 +182,9 @@ public class HeartbeatImpl extends AbstractServer implements HeartbeatConnector 
                 e.printStackTrace();
             } else {
                 Log.e(this, "[Heartbeat] Send failed to " + toNodeId.getNodeIdString() +
-                        ", but keeping the peer on list as chosen via user settings");
+                        ", but keeping the peer on list as chosen via user settings (moving to unconfirmed)");
+                HeartbeatImpl.this.chatNodeServer.getContext().removePeer(toNodeId.getNodeIdString());
+                HeartbeatImpl.this.chatNodeServer.getContext().addPeer(toNodeId.getNodeIdString());
             }
             return null;
         }

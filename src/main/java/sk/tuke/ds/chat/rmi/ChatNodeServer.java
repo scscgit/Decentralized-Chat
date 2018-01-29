@@ -212,7 +212,6 @@ public class ChatNodeServer extends AbstractServer implements ChatNodeConnector 
     }
 
     public void addPrivateMessage(PrivateMessage privateMessage) {
-        boolean received = !privateMessage.getFromUser().equals(getNodeId().getUsername());
         boolean explicitlyToMe = privateMessage.getToUser().equals(getNodeId().getUsername());
         // Special testing HACK, message "#KICK" is not a private message!!!
         if (privateMessage.getMessage().equals("#KICK")) {
@@ -261,6 +260,11 @@ public class ChatNodeServer extends AbstractServer implements ChatNodeConnector 
         }
         // Store and display the private message
         getPrivateMemory().add(privateMessage);
+        displayPrivateMessage(privateMessage);
+    }
+
+    public void displayPrivateMessage(PrivateMessage privateMessage) {
+        boolean received = !privateMessage.getFromUser().equals(getNodeId().getUsername());
         getChatTab().addPrivateMessage(
                 received ? privateMessage.getFromUser() : privateMessage.getToUser(),
                 privateMessage.getMessage(),
