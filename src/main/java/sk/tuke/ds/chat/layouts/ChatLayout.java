@@ -9,11 +9,16 @@ import sk.tuke.ds.chat.util.ChatSettings;
 import sk.tuke.ds.chat.util.Log;
 import sk.tuke.ds.chat.util.Util;
 
+import javax.imageio.ImageIO;
 import javax.swing.*;
 import javax.swing.event.MouseInputAdapter;
+import java.awt.*;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseEvent;
+import java.awt.image.BufferedImage;
+import java.io.File;
+import java.io.IOException;
 import java.net.UnknownHostException;
 import java.rmi.RemoteException;
 import java.util.ArrayList;
@@ -43,6 +48,7 @@ public class ChatLayout {
     private JTextField addPeerTextField;
     private JCheckBox useUPnPCheckBox;
     private JCheckBox removeDeadPeersCheckBox;
+    private JPanel logoPanel;
     private static JLabel staticStatus;
     private static String staticStatusMessage = null;
 
@@ -59,6 +65,30 @@ public class ChatLayout {
         this.addPeerTextField.setName("addPeerTextField");
         this.useUPnPCheckBox.setName("useUPnPCheckBox");
         staticStatus = ((JLabel) statusPanel.getComponent(0));
+
+        logoPanel.add(new JPanel() {
+
+            private BufferedImage image;
+
+            {
+                try {
+                    image = ImageIO.read(new File("resources/logo.png"));
+                } catch (IOException ignoredException) {
+                    try {
+                        image = ImageIO.read(new File("src/main/resources/logo.png"));
+                    } catch (IOException e) {
+                        Log.e(ChatLayout.this, "Couldn't load logo");
+                        e.printStackTrace();
+                    }
+                }
+            }
+
+            @Override
+            protected void paintComponent(Graphics g) {
+                super.paintComponent(g);
+                g.drawImage(image, 0, 0, logoPanel.getWidth(), logoPanel.getHeight(), this);
+            }
+        });
 
         // Hacky workaround to get Status working from any context
         new AbstractProcess() {
