@@ -22,7 +22,7 @@ public class Blockchain implements Serializable {
                 new Block(
                         null,
                         Collections.singletonList(
-                                new Message(new Date(), "System", "Initiated new chat session")
+                                new Message(new Date(), "System", "Initiated new chat session (empty blockchain)")
                         )
                 ).mineBlock(0, () -> false)
         );
@@ -108,44 +108,14 @@ public class Blockchain implements Serializable {
         int shortestBlockchainLastIndex = Math.min(lastBlockIndex(), otherBlockchain.lastBlockIndex());
         boolean thisShortest = lastBlockIndex() == shortestBlockchainLastIndex;
 
-        if (!this.chain.get(0).shaHash().equals(otherBlockchain.chain.get(0).shaHash())) {
-            Log.e(this,
-                    "Blockchains totally incompatible in <" + thisServer.getNodeId().getUsername()
-                            + ">; replaced by " + (thisShortest ? "other" : "our own (no change locally, " +
-                            "assuming other will re-announce its messages)"));
-            if (thisShortest) {
-                // Gotta re-announce all messages at the end
-                List<Message> orphans = this.chain
-                        .stream()
-                        .flatMap(block -> block.getMessages().stream())
-                        .collect(Collectors.toList());
-                // Swap blockchains and completely reset the chat
-                this.chain = otherBlockchain.chain;
-                thisServer.getChatTab().clearMessages();
-                // First spam all the private messages
-                thisServer.getPrivateMemory().displayAll(thisServer);
-                // Then the actual shared messages
-                this.chain.stream().flatMap(block -> block.getMessages().stream()).forEach(
-                        message -> thisServer.getChatTab().addMessage(
-                                message.getUser(),
-                                new String[]{message.getMessage()},
-                                message.getDate()
-                        )
-                );
-                // Now restore what remains of the old blockchain by mining it in a block in a cooperative way
-                orphans.forEach(thisServer::announceMessage);
-            }
-            return true;
-        }
-
         // Conflict resolution if genesis block matches
         for (int blockchainIndex = shortestBlockchainLastIndex;
-             blockchainIndex > 0;
+             blockchainIndex >= 0;
              blockchainIndex--
                 ) {
             Block myBlock = this.chain.get(blockchainIndex);
             Block otherBlock = otherBlockchain.chain.get(blockchainIndex);
-            if (!myBlock.shaHash().equals(otherBlock.shaHash())) {
+            if (myBlock.shaHash().equals(otherBlock.shaHash())) {
                 // Joined blockchains; finding orphaned messages
                 Log.i(this,
                         "[Blockchain conflict resolution] Diverged after our chain's block "
@@ -157,7 +127,35 @@ public class Blockchain implements Serializable {
                         thisShortest ? otherBlockchain : this,
                         thisServer
                 );
+                return true;
             }
+        }
+        //Following is true: !this.chain.get(0).shaHash().equals(otherBlockchain.chain.get(0).shaHash())
+        Log.e(this,
+                "Blockchains totally incompatible in <" + thisServer.getNodeId().getUsername()
+                        + ">; replaced by " + (thisShortest ? "other" : "our own (no change locally, " +
+                        "assuming other will re-announce its messages)"));
+        if (thisShortest) {
+            // Gotta re-announce all messages at the end
+            List<Message> orphans = this.chain
+                    .stream()
+                    .flatMap(block -> block.getMessages().stream())
+                    .collect(Collectors.toList());
+            // Swap blockchains and completely reset the chat
+            this.chain = otherBlockchain.chain;
+            thisServer.getChatTab().clearMessages();
+            // First spam all the private messages
+            thisServer.getPrivateMemory().displayAll(thisServer);
+            // Then the actual shared messages
+            this.chain.stream().flatMap(block -> block.getMessages().stream()).forEach(
+                    message -> thisServer.getChatTab().addMessage(
+                            message.getUser(),
+                            new String[]{message.getMessage()},
+                            message.getDate()
+                    )
+            );
+            // Now restore what remains of the old blockchain by mining it in a block in a cooperative way
+            orphans.forEach(thisServer::announceMessage);
         }
         return true;
     }
